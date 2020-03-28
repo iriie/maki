@@ -8,4 +8,7 @@ why did i do this
 ugh
 
 ## how to use
-git clone && cargo run
+``> git clone && cargo run``
+
+## other info
+tested on windows 10, may or may not work on linux or macos
