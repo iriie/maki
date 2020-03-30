@@ -29,9 +29,9 @@ impl Timer {
 
 #[command]
 #[aliases(presence, a)]
-#[description("Edit the bot's presence. Use the `listen to`, `play`, or `reset` subcommands to set the respective activity.")]
+#[description("Edit the bot's presence. Use the `listen`, `play`, or `reset` subcommands to set the respective activity.")]
 #[owners_only]
-#[sub_commands(activity_listen, activity_play, activity_reset)]
+#[sub_commands(activity_listen, activity_play, activity_stream, activity_reset)]
 fn activity(ctx: &mut Context, msg: &Message) -> CommandResult {
     // Send error message if no subcommands were matched.
     msg.channel_id.say(&ctx.http, "Invalid activity!")?;
@@ -45,7 +45,7 @@ fn activity_listen(ctx: &mut Context, msg: &Message, args: Args) -> CommandResul
     ctx.set_activity(activity);
 
     msg.channel_id
-        .say(&ctx.http, "Updated presence successfully!")?;
+        .say(&ctx.http, format!("Now listening to `{:#?}`", args.rest()))?;
 
     Ok(())
 }
@@ -56,7 +56,19 @@ fn activity_play(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult 
     ctx.set_activity(activity);
 
     msg.channel_id
-        .say(&ctx.http, "Updated presence successfully!")?;
+    .say(&ctx.http, format!("Now playing `{:#?}`", args.rest()))?;
+
+    Ok(())
+}
+
+#[command("stream")]
+fn activity_stream(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+    let stream_url: &str = "https://twitch.tv/smallant1";
+    let activity = Activity::streaming(args.rest(), stream_url);
+    ctx.set_activity(activity);
+
+    msg.channel_id
+    .say(&ctx.http, format!("Now streaming `{:#?}`", args.rest()))?;
 
     Ok(())
 }
@@ -99,7 +111,7 @@ fn nickname(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
         if let Err(why) = guild.edit_nickname(&ctx.http, name) {
             error!("Error changing nickname: {:?}", why);
         }
-            let fmt = format!("Changed nickname to \"{:#?}\"", args);
+            let fmt = format!("Changed nickname to `{:#?}`", args.message());
             let _ = match msg.channel_id.say(&ctx.http, fmt){
                 Ok(_) => return Ok(()),
                 Err(_) => return Ok(()),

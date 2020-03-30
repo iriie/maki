@@ -16,7 +16,7 @@ const FM_TOP_TRACKS_URL: &str = "http://ws.audioscrobbler.com/2.0/?method=user.g
 #[command]
 #[aliases(fm)]
 #[description(
-    "Gets latest things from last.fm. Defaults to \"latest\".\nSubcommands latest, topsongs, latestsongs"
+    "Gets latest things from last.fm. Defaults to \"latest\".\nSubcommands: `latest`, `topsongs`, `latestsongs`"
 )]
 #[sub_commands(LASTFM_LATEST, LASTFM_TOPSONGS, LASTFM_LATESTSONGS, LASTFM_SAVE)]
 fn lastfm(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {

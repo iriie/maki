@@ -65,20 +65,6 @@ fn urbandictionary(ctx: &mut Context, msg: &Message, args: Args) -> CommandResul
 }
 
 #[command]
-#[aliases(poke, pk)]
-fn pokemon(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    let data = get_data(&ctx, RANDOM_PIKACHU_API_URL, args.rest())?;
-    let img = data
-        .pointer("/link") //where we get the data (in js would be link)
-        .and_then(|x| x.as_str()) //convert to string
-        .unwrap_or("N/A"); //if not available, set var as "N/A"
-    let _ = msg.channel_id.send_message(&ctx.http, |m| {
-        m.embed(|e| e.color(0x3498db).title("pika!").image(img))
-    });
-    Ok(())
-}
-
-#[command]
 #[aliases(pika)]
 fn pikachu(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let data = get_data(&ctx, RANDOM_PIKACHU_API_URL, args.rest())?;

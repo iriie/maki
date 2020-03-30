@@ -2,8 +2,6 @@ extern crate timeago;
 extern crate dotenv;
 extern crate chrono;
 extern crate reqwest;
-#[macro_use]
-extern crate cached;
 
 use log::{info};
 use std::{collections::{HashMap, HashSet}, sync::Arc};
@@ -56,7 +54,7 @@ struct Admin;
 struct General;
 
 #[group]
-#[commands(urbandictionary, pikachu, pokedex)]
+#[commands(urbandictionary, pikachu, pokemon)]
 struct Fun;
 
 #[group]

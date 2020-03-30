@@ -1,0 +1,18 @@
+query MyQuery($pokemon: String!) {
+  getPokemonDetailsByFuzzy(pokemon: $pokemon, skip: 0, take: 49, reverse: true) {
+    sprite
+    num
+    species
+    baseSpecies
+    color
+    types
+    height
+    weight
+    flavorTexts {
+      game
+      flavor
+    }
+    bulbapediaPage
+    serebiiPage
+  }
+}
