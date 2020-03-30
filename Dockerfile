@@ -1,8 +1,12 @@
-FROM rust:1.31
+FROM rust:1.42
 
 WORKDIR /usr/src/myapp
-COPY . .
 
-RUN cargo install --path .
+COPY Cargo.toml Cargo.toml
+COPY Cargo.lock Cargo.lock
+COPY .env .env
+COPY ./src ./src
+
+RUN cargo build --release
 
 CMD ["myapp"]
