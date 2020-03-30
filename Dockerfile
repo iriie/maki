@@ -15,6 +15,7 @@ RUN cargo build --release
 
 # Build the actual source
 COPY src ./src
+COPY graphql ./graphql
 RUN touch ./src/main.rs && cargo build --release
 
 # Create a minimal docker file with only the resulting binary
