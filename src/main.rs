@@ -85,6 +85,7 @@ fn main() {
     dotenv().ok();
     // Configure the client with your Discord bot token in the environment.
     let token = &env::var("BOT_TOKEN").expect("Expected a discord token in the environment.");
+    let prefix = &env::var("PREFIX").expect("Expected a bot prefix in the environment.");
     let mut client = Client::new(&token, Handler).expect("Err creating client");
 
     {
@@ -115,7 +116,7 @@ fn main() {
         .configure(|c| c
             .with_whitespace(true)
             .on_mention(Some(bot_id))
-            .prefix("~")
+            .prefix(prefix)
             // You can set multiple delimiters via delimiters()
             // or just one via delimiter(",")
             // If you set multiple delimiters, the order you list them
