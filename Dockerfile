@@ -12,11 +12,12 @@ RUN rustup target add x86_64-unknown-linux-musl
 # we can use the docker build cache and skip these (typically slow) steps.
 RUN USER=root cargo new app
 WORKDIR /usr/src/app
-COPY Cargo.toml Cargo.lock ./ ./graphql/
+COPY Cargo.toml Cargo.lock ./
 RUN cargo build --release
 
 # Copy the source and build the application.
-COPY src ./src
+COPY src ./src 
+COPY graphql ./graphql
 RUN cargo install --target x86_64-unknown-linux-musl --path .
 
 # Copy the statically-linked binary into a scratch container.
