@@ -8,7 +8,23 @@ why did i do this
 ugh
 
 ## how to use
-``> git clone && cargo run``
+make sure you have an env file in your root project directory that looks like this, obviously with everything filled out:
+```
+PREFIX=
+BOT_TOKEN=
+BING_MAPS_KEY=
+DARK_SKY_KEY=
+```
 
+run on your own system:
+
+`> git clone && cargo run`
+
+or to run with docker:
+```
+> git clone
+> docker build -t maki-bot .
+> docker run maki-bot --env-file ./.env
+```
 ## other info
-tested on windows 10, may or may not work on linux or macos
+tested on windows 10 and linux, may or may not work on macos
