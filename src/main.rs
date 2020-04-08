@@ -87,6 +87,8 @@ fn help(
     help_commands::with_embeds(ctx, msg, args, options, groups, owners)
 }
 
+
+// this function should return a prefix as a string
 fn dynamic_prefix(ctx: &mut Context, msg: &Message) -> Option<String> {
     // Make sure we can actually get the guild_id, if not there's
     // no point to trying to find the prefix. Also means we can use
@@ -139,7 +141,7 @@ fn main() {
                     .dynamic_prefix(|ctx: &mut Context, msg: &Message| {
                         let default_prefix = &env::var("PREFIX").expect("Expected a bot prefix in the environment.");
                         // Seperate function so dynamic prefix can look cleaner
-                        // (this allows for us to use return None, when dynamic_prefix
+                        // (this also allows for us to use return None, when dynamic_prefix
                         // has no results, Allowing us here, to use a "default" prefix
                         // in the case that it is None for any reason)
                         if let Some(prefix) = dynamic_prefix(ctx, msg) {
