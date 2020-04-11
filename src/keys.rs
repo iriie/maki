@@ -9,7 +9,7 @@ use std::{
     collections::HashMap,
 };
 
-use reqwest;
+use tokio::sync::Mutex;
 
 use chrono::{DateTime, Utc};
 
@@ -17,8 +17,8 @@ use chrono::{DateTime, Utc};
 // allows for data to be accessible across all events and framework commands, or
 // anywhere else that has a copy of the `data` Arc.
 
-pub struct SerenityShardManager;
-impl TypeMapKey for SerenityShardManager {
+pub struct ShardManagerContainer;
+impl TypeMapKey for ShardManagerContainer {
     type Value = Arc<Mutex<ShardManager>>;
 }
 
@@ -31,9 +31,4 @@ pub struct CommandCounter;
 
 impl TypeMapKey for CommandCounter {
     type Value = HashMap<String, u64>;
-}
-
-pub struct Reqwest;
-impl TypeMapKey for Reqwest {
-    type Value = Arc<reqwest::blocking::Client>; 
 }

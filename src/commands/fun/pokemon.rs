@@ -19,13 +19,13 @@ struct MyQuery;
     "Gets things from Favna's Pokemon API. Defaults to \"pokedex\".\nSubcommands: `pokedex`"
 )]
 #[sub_commands(POKEMON_POKEDEX)]
-fn pokemon(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    pokemon_pokedex(ctx, msg, args)?;
+async fn pokemon(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+    pokemon_pokedex(ctx, msg, args).await?;
     Ok(())
 }
 #[command("pokedex")]
 #[aliases(dex)]
-fn pokemon_pokedex(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn pokemon_pokedex(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let pokemon: String = args.rest().to_string();
 
     let q = MyQuery::build_query(my_query::Variables { pokemon: pokemon });
@@ -42,7 +42,7 @@ fn pokemon_pokedex(ctx: &mut Context, msg: &Message, args: Args) -> CommandResul
         for error in &errors {
             println!("{:?}", error);
         }
-        msg.channel_id.say(&ctx.http, "That pokemon could not be found.")?;
+        msg.channel_id.say(&ctx.http, "That pokemon could not be found.").await?;
         return Err(CommandError::from(
             "Pokemon not found",
         ))
@@ -78,7 +78,7 @@ fn pokemon_pokedex(ctx: &mut Context, msg: &Message, args: Args) -> CommandResul
                 ))
                 .footer(|f| f.text("Data from favware/graphql-pokemon"))
         })
-    });
+    }).await;
 
     Ok(())
 }

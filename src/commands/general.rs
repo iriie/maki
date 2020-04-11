@@ -1,5 +1,4 @@
 use dotenv::dotenv;
-use log::error;
 use serde;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -80,27 +79,19 @@ struct DSMainStruct {
     ozone: f32,
 }
 
-fn get_data(url: String) -> Result<Value, CommandError> {
+async fn get_data(url: String) -> Result<Value, CommandError> {
     println!("{:#?}", url);
 
-    // fetch data
-    let client = reqwest::blocking::Client::new();
-    match client.get(&url).send().and_then(|x| x.json()) {
-        //get from url and convert to json
-        Ok(val) => Ok(val), //send data back as serde_json value
-        Err(e) => {
-            error!("[GRL] Failed to fetch data: {}", e);
-            Err(CommandError::from(&format!(
-                "Failed to get data from given URL: {}",
-                url
-            )))
-        }
-    }
+    let client = reqwest::Client::new();
+
+    let resp = client.get(&url).send().await?.json().await?;
+
+    Ok(resp)
 }
 
 #[command]
 #[aliases(w)]
-fn weather(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn weather(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     dotenv().ok();
     let darksky_key =
         env::var("DARK_SKY_KEY").expect("Expected DARK_SKY_KEY to be set in environment");
@@ -111,11 +102,11 @@ fn weather(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
         .replace("{SEARCH}", args.rest())
         .replace("{BING_MAPS_KEY}", &bingmaps_key)
         .to_string();
-    let data = get_data(geocode_api_url_1.to_string())?;
+    let data = get_data(geocode_api_url_1.to_string()).await?;
     let geocode_des: Geocode = serde_json::from_value(data.clone()).unwrap();
     if geocode_des.resource_sets[0].resources.len() == 0 {
         msg.channel_id
-            .say(&ctx.http, "That place could not be found.")?;
+            .say(&ctx.http, "That place could not be found.").await?;
         return Err(CommandError::from("Place not found"));
     }
 
@@ -130,7 +121,7 @@ fn weather(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
         )
         .replace("{DARK_SKY_KEY}", &darksky_key)
         .to_string();
-    let data = get_data(dark_sky_api_url_1.to_string())?;
+    let data = get_data(dark_sky_api_url_1.to_string()).await?;
     let dark_sky_des: DarkSky = serde_json::from_value(data.clone()).unwrap();
     let footer = "Powered by Dark Sky - Hyperlocal Weather";
 
@@ -192,6 +183,6 @@ fn weather(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
                 )
                 .footer(|f| f.text(&format!("{}", footer)))
         })
-    });
+    }).await;
     Ok(())
 }

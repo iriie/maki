@@ -3,15 +3,16 @@ extern crate dotenv;
 extern crate reqwest;
 extern crate timeago;
 
-use chrono::Utc;
-use log::{info, warn};
+use log::{warn};
 use serenity::{
+    async_trait,
     framework::standard::{
         help_commands,
-        macros::{group, help},
+        macros::{group, help, hook},
         Args, CommandGroup, CommandResult, DispatchError, HelpOptions, StandardFramework,
     },
-    model::{channel::Message, event::ResumedEvent, gateway::Ready, id::UserId},
+    http::Http,
+    model::{channel::Message, gateway::Ready, id::UserId},
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -33,21 +34,20 @@ use commands::fun::pokemon::*;
 use commands::general::*;
 use commands::meta::*;
 use commands::music::lastfm::*;
+use commands::music::spotify::*;
 
 // This imports `typemap`'s `Key` as `TypeMapKey`.
 use serenity::prelude::*;
 
 struct Handler;
 
+#[async_trait]
 impl EventHandler for Handler {
-    fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, _: Context, ready: Ready) {
         println!(
             "{}#{} is connected!",
             ready.user.name, ready.user.discriminator
         );
-    }
-    fn resume(&self, _: Context, _: ResumedEvent) {
-        info!("Resumed.");
     }
 }
 
@@ -64,7 +64,7 @@ struct General;
 struct Fun;
 
 #[group]
-#[commands(lastfm)]
+#[commands(lastfm, spotify)]
 struct Music;
 
 #[help]
@@ -76,7 +76,8 @@ struct Music;
 #[max_levenshtein_distance(2)]
 #[strikethrough_commands_tip_in_dm(false)]
 #[strikethrough_commands_tip_in_guild(false)]
-fn help(
+
+async fn help(
     ctx: &mut Context,
     msg: &Message,
     args: Args,
@@ -84,40 +85,85 @@ fn help(
     groups: &[&'static CommandGroup],
     owners: HashSet<UserId>,
 ) -> CommandResult {
-    help_commands::with_embeds(ctx, msg, args, options, groups, owners)
+    help_commands::with_embeds(ctx, msg, args, options, groups, owners).await
 }
 
+#[hook]
+async fn before(_ctx: &mut Context, msg: &Message, command_name: &str) -> bool {
+    println!(
+        "Got command '{}' by user '{}'",
+        command_name, msg.author.name
+    );
+
+    true // if `before` returns false, command processing doesn't happen.
+}
+
+#[hook]
+async fn after(
+    _ctx: &mut Context,
+    msg: &Message,
+    command_name: &str,
+    command_result: CommandResult,
+) {
+    match command_result {
+        Ok(()) => println!("Processed command '{}'", command_name),
+        Err(why) => warn!(
+            "Command `{}` triggered by `{}` has errored: \n{}",
+            command_name,
+            msg.author.tag(),
+            why.0
+        ),
+    }
+}
+
+#[hook]
+async fn unknown_command(_ctx: &mut Context, _msg: &Message, _unknown_command_name: &str) {
+    //println!("Could not find command named '{}'", unknown_command_name);
+}
+
+#[hook]
+async fn normal_message(_ctx: &mut Context, _msg: &Message) {
+    //println!("Message is not a command '{}'", msg.content);
+}
+
+#[hook]
+async fn dispatch_error(ctx: &mut Context, msg: &Message, error: DispatchError) -> () {
+    if let DispatchError::Ratelimited(seconds) = error {
+        let _ = msg
+            .channel_id
+            .say(
+                &ctx.http,
+                &format!("Try this again in {} seconds.", seconds),
+            )
+            .await;
+    };
+}
 
 // this function should return a prefix as a string
-fn dynamic_prefix(ctx: &mut Context, msg: &Message) -> Option<String> {
+#[hook]
+async fn dynamic_prefix(_ctx: &mut Context, msg: &Message) -> Option<String> {
     // Make sure we can actually get the guild_id, if not there's
     // no point to trying to find the prefix. Also means we can use
     // unwrap for this later on, since we Guard check it's Some() here
     msg.guild_id?;
+    let p;
 
-    let _data = match ctx.data.try_read() {
-        Some(v) => v,
-        None => return None,
-    };
+    p = ">".to_string();
 
-    None
+    Some(p)
 }
 
-fn main() {
+#[tokio::main(core_threads = 8)]
+async fn main() {
     dotenv().ok();
     // Configure the client with your Discord bot token in the environment.
     let token = &env::var("BOT_TOKEN").expect("Expected a discord token in the environment.");
-    let mut client = Client::new(&token, Handler).expect("Err creating client");
+    // Note: We create the client a bit further down
 
-    {
-        let mut data = client.data.write();
-        data.insert::<CommandCounter>(HashMap::default());
-        data.insert::<SerenityShardManager>(Arc::clone(&client.shard_manager));
-        data.insert::<Uptime>(Utc::now());
-    }
+    let http = Http::new_with_token(&token);
 
     // We will fetch your bot's owners and id
-    let (owners, bot_id) = match client.cache_and_http.http.get_current_application_info() {
+    let (owners, bot_id) = match http.get_current_application_info().await {
         Ok(info) => {
             let mut owners = HashSet::new();
             owners.insert(info.owner.id);
@@ -126,118 +172,78 @@ fn main() {
         }
         Err(why) => panic!("Could not access application info: {:?}", why),
     };
-    client.with_framework(
-        // Configures the client, allowing for options to mutate how the
-        // framework functions.
+    // Configures the client, allowing for options to mutate how the
+    // framework functions.
+    //
+    // Refer to the documentation for
+    // `serenity::ext::framework::Configuration` for all available
+    // configurations.
+    let framework = StandardFramework::new()
+        .configure(|c| {
+            c.with_whitespace(true)
+                .on_mention(Some(bot_id))
+                .dynamic_prefix(dynamic_prefix)
+                // You can set multiple delimiters via delimiters()
+                // or just one via delimiter(",")
+                // If you set multiple delimiters, the order you list them
+                // decides their priority (from first to last).
+                //
+                // In this case, if "," would be first, a message would never
+                // be delimited at ", ", forcing you to trim your arguments if you
+                // want to avoid whitespaces at the start of each.
+                .delimiters(vec![", ", ","])
+                // Sets the bot's owners. These will be used for commands that
+                // are owners only.
+                .owners(owners)
+        })
+        // Set a function to be called prior to each command execution. This
+        // provides the context of the command, the message that was received,
+        // and the full name of the command that will be called.
         //
-        // Refer to the documentation for
-        // `serenity::ext::framework::Configuration` for all available
-        // configurations.
-        StandardFramework::new()
-            .configure(|c| {
-                c.with_whitespace(true)
-                    .on_mention(Some(bot_id))
-                    //stolen from https://github.com/Arzte/Arzte-bot/blob/master/src/main.rs
-                    .dynamic_prefix(|ctx: &mut Context, msg: &Message| {
-                        let default_prefix = &env::var("PREFIX").expect("Expected a bot prefix in the environment.");
-                        // Seperate function so dynamic prefix can look cleaner
-                        // (this also allows for us to use return None, when dynamic_prefix
-                        // has no results, Allowing us here, to use a "default" prefix
-                        // in the case that it is None for any reason)
-                        if let Some(prefix) = dynamic_prefix(ctx, msg) {
-                            return Some(prefix);
-                        }
-                        Some(default_prefix.to_string())
-                    })
-                    // You can set multiple delimiters via delimiters()
-                    // or just one via delimiter(",")
-                    // If you set multiple delimiters, the order you list them
-                    // decides their priority (from first to last).
-                    //
-                    // In this case, if "," would be first, a message would never
-                    // be delimited at ", ", forcing you to trim your arguments if you
-                    // want to avoid whitespaces at the start of each.
-                    .delimiters(vec![", ", ","])
-                    // Sets the bot's owners. These will be used for commands that
-                    // are owners only.
-                    .owners(owners)
-                    .case_insensitivity(true)
-            })
-            // Set a function to be called prior to each command execution. This
-            // provides the context of the command, the message that was received,
-            // and the full name of the command that will be called.
-            //
-            // You can not use this to determine whether a command should be
-            // executed. Instead, the `#[check]` macro gives you this functionality.
-            .before(|ctx, msg, command_name| {
-                println!(
-                    "Got command '{}' by user '{}'",
-                    command_name, msg.author.name
-                );
+        // You can not use this to determine whether a command should be
+        // executed. Instead, the `#[check]` macro gives you this functionality.
+        //
+        // **Note**: Async closures are unstable, you may use them in your
+        // application if you are fine using nightly Rust.
+        // If not, we need to provide the function identifiers to the
+        // hook-functions (before, after, normal, ...).
+        .before(before)
+        // Similar to `before`, except will be called directly _after_
+        // command execution.
+        .after(after)
+        // Set a function that's called whenever an attempted command-call's
+        // command could not be found.
+        .unrecognised_command(unknown_command)
+        // Set a function that's called whenever a message is not a command.
+        .normal_message(normal_message)
+        // Set a function that's called whenever a command's execution didn't complete for one
+        // reason or another. For example, when a user has exceeded a rate-limit or a command
+        // can only be performed by the bot owner.
+        .on_dispatch_error(dispatch_error)
+        .help(&HELP)
+        // Can't be used more than once per 5 seconds:
+        //.bucket("emoji", |b| b.delay(5))
+        // Can't be used more than 2 times per 30 seconds, with a 5 second delay:
+        //.bucket("complicated", |b| b.delay(5).time_span(30).limit(2))
+        // The `#[group]` macro generates `static` instances of the options set for the group.
+        // They're made in the pattern: `#name_GROUP` for the group instance and `#name_GROUP_OPTIONS`.
+        // #name is turned all uppercase
+        .group(&ADMIN_GROUP)
+        .group(&GENERAL_GROUP)
+        .group(&FUN_GROUP)
+        .group(&MUSIC_GROUP);
 
-                // Increment the number of times this command has been run once. If
-                // the command's name does not exist in the counter, add a default
-                // value of 0.
-                let mut data = ctx.data.write();
-                let counter = data
-                    .get_mut::<CommandCounter>()
-                    .expect("Expected CommandCounter in ShareMap.");
-                let entry = counter.entry(command_name.to_string()).or_insert(0);
-                *entry += 1;
+    let mut client = Client::new_with_framework(&token, Handler, framework)
+        .await
+        .expect("Err creating client");
 
-                true // if `before` returns false, command processing doesn't happen.
-            })
-            // Similar to `before`, except will be called directly _after_
-            // command execution.
-            // stolen from https://github.com/Arzte/Arzte-bot/blob/master/src/main.rs
-            .after(|context, message, command_name, error| {
-                if let Err(why) = error {
-                    let _ = message.channel_id.say(
-                        &context.http,
-                        format!(
-                            "The command {} has errored: ``{}``\nPlease try again later",
-                            command_name, why.0
-                        ),
-                    );
-                    warn!(
-                        "Command `{}` triggered by `{}` has errored: \n{}",
-                        command_name,
-                        message.author.tag(),
-                        why.0
-                    );
-                }
-            })
-            // Set a function that's called whenever an attempted command-call's
-            // command could not be found.
-            .unrecognised_command(|_, _, unknown_command_name| {
-                println!("Could not find command named '{}'", unknown_command_name);
-            })
-            // Set a function that's called whenever a command's execution didn't complete for one
-            // reason or another. For example, when a user has exceeded a rate-limit or a command
-            // can only be performed by the bot owner.
-            .on_dispatch_error(|ctx, msg, error| {
-                if let DispatchError::Ratelimited(seconds) = error {
-                    let _ = msg.channel_id.say(
-                        &ctx.http,
-                        &format!("Try this again in {} seconds.", seconds),
-                    );
-                }
-            })
-            .help(&HELP)
-            // Can't be used more than once per 5 seconds:
-            //.bucket("emoji", |b| b.delay(5))
-            // Can't be used more than 2 times per 30 seconds, with a 5 second delay:
-            //.bucket("complicated", |b| b.delay(5).time_span(30).limit(2))
-            // The `#[group]` macro generates `static` instances of the options set for the group.
-            // They're made in the pattern: `#name_GROUP` for the group instance and `#name_GROUP_OPTIONS`.
-            // #name is turned all uppercase
-            .group(&ADMIN_GROUP)
-            .group(&GENERAL_GROUP)
-            .group(&FUN_GROUP)
-            .group(&MUSIC_GROUP),
-    );
+    {
+        let mut data = client.data.write().await;
+        data.insert::<CommandCounter>(HashMap::default());
+        data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
+    }
 
-    if let Err(why) = client.start() {
+    if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);
     }
 }

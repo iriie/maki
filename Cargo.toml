@@ -16,6 +16,13 @@ dotenv = "0.15.0"
 cached = "0.11"
 graphql_client = "0.9.0"
 
+[dependencies.tokio]
+version = "=0.2.13"
+features = ["full"]
+
 [dependencies.serenity]
-default-features = true
-version = "0.8"
+git = "https://github.com/Lakelezz/serenity/"
+branch = "await"
+default-features = false
+features = ["builder", "cache", "client", "framework", "gateway", "http", "model", "standard_framework", "utils", "native_tls_backend", "absolute_ratelimits", "collector"]
+
