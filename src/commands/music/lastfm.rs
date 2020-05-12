@@ -9,6 +9,8 @@ use chrono::naive::NaiveDateTime;
 use chrono::Utc;
 use serde_json::Value;
 
+use std::env;
+
 const FM_RECENT_TRACKS_URL: &str = "http://ws.audioscrobbler.com/2.0/?method=user.getRecentTracks&user={USER}&api_key={KEY}&format=json&limit=10";
 const FM_TOP_TRACKS_URL: &str = "http://ws.audioscrobbler.com/2.0/?method=user.gettoptracks&user={USER}&api_key={KEY}&format=json&limit=10&period={PERIOD}";
 
@@ -18,8 +20,8 @@ const FM_TOP_TRACKS_URL: &str = "http://ws.audioscrobbler.com/2.0/?method=user.g
     "Gets latest things from last.fm. Defaults to \"latest\".\nSubcommands: `latest`, `topsongs`, `latestsongs`"
 )]
 #[sub_commands(LASTFM_LATEST, LASTFM_TOPSONGS, LASTFM_LATESTSONGS, LASTFM_SAVE)]
-async fn lastfm(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    let data = get_lastfm_data(&ctx, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
+async fn lastfm(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let data = get_lastfm_data(ctx, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
     println!("{:#?}", args.rest());
     recent_track(ctx, msg, &data, false).await?;
 
@@ -27,14 +29,14 @@ async fn lastfm(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
 }
 #[command("save")]
 #[aliases(update)]
-async fn lastfm_save(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn lastfm_save(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     save_lastfm_username(ctx, msg, msg.author.id.0, &args).await;
 
     Ok(())
 }
 #[command("latest")]
-async fn lastfm_latest(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    let data = get_lastfm_data(&ctx, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
+async fn lastfm_latest(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let data = get_lastfm_data(ctx, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
     println!("{:#?}", args.rest());
     recent_track(ctx, msg, &data, false).await?;
 
@@ -42,8 +44,8 @@ async fn lastfm_latest(ctx: &mut Context, msg: &Message, args: Args) -> CommandR
 }
 
 #[command("topsongs")]
-async fn lastfm_topsongs(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    let data = get_lastfm_data(&ctx, FM_TOP_TRACKS_URL, args.rest(), "0").await?;
+async fn lastfm_topsongs(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let data = get_lastfm_data(ctx, FM_TOP_TRACKS_URL, args.rest(), "0").await?;
 
     top_tracks(ctx, msg, &data, "0").await;
 
@@ -51,8 +53,8 @@ async fn lastfm_topsongs(ctx: &mut Context, msg: &Message, args: Args) -> Comman
 }
 #[command("latestsongs")]
 #[aliases(songs)]
-async fn lastfm_latestsongs(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
-    let data = get_lastfm_data(&ctx, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
+async fn lastfm_latestsongs(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let data = get_lastfm_data(ctx, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
 
     recent_tracks(ctx, msg, &data).await;
 
@@ -60,7 +62,7 @@ async fn lastfm_latestsongs(ctx: &mut Context, msg: &Message, args: Args) -> Com
 }
 
 async fn recent_track(
-    ctx: &mut Context,
+    ctx: &Context,
     msg: &Message,
     data: &Value,
     saved: bool,
@@ -192,7 +194,7 @@ async fn recent_track(
     Ok(())
 }
 
-async fn top_tracks(ctx: &mut Context, msg: &Message, data: &Value, _period: &str) {
+async fn top_tracks(ctx: &Context, msg: &Message, data: &Value, _period: &str) {
     println!("top track");
     let username = data
         .pointer("/toptracks/@attr/user")
@@ -252,7 +254,7 @@ async fn top_tracks(ctx: &mut Context, msg: &Message, data: &Value, _period: &st
     send_last_fm_embed(ctx, msg, None, &title, username, &s, first_image).await;
 }
 
-async fn recent_tracks(ctx: &mut Context, msg: &Message, data: &Value) {
+async fn recent_tracks(ctx: &Context, msg: &Message, data: &Value) {
     let username = data
         .pointer("/recenttracks/@attr/user")
         .and_then(|x| x.as_str())
@@ -307,7 +309,7 @@ async fn recent_tracks(ctx: &mut Context, msg: &Message, data: &Value) {
     send_last_fm_embed(ctx, msg, None, &title, username, &s, first_image).await;
 }
 
-async fn save_lastfm_username(ctx: &mut Context, msg: &Message, user: u64, args: &Args){
+async fn save_lastfm_username(ctx: &Context, msg: &Message, user: u64, args: &Args){
     let tosay = "".to_string() + &msg.author.tag() + "(" + &user.to_string() + ")" + "'s last.fm username will be saved as " + args.rest();
     let _ = msg.channel_id.say(&ctx.http, tosay);
 }
@@ -319,7 +321,7 @@ async fn get_lastfm_data(
     period: &str,
 ) -> Result<Value, CommandError> {
     println!("{:#?}", username);
-    let fm_key = "a0eed701b74a0eac6dd9a13cdff63a9c";
+    let fm_key = &env::var("LASTFM_KEY").expect("Expected a discord token in the environment.");
     let url = url
         .replace("{USER}", &username)
         .replace("{KEY}", &fm_key)

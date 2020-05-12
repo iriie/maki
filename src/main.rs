@@ -1,8 +1,3 @@
-extern crate chrono;
-extern crate dotenv;
-extern crate reqwest;
-extern crate timeago;
-
 use log::{warn};
 use serenity::{
     async_trait,
@@ -78,7 +73,7 @@ struct Music;
 #[strikethrough_commands_tip_in_guild(false)]
 
 async fn help(
-    ctx: &mut Context,
+    ctx: &Context,
     msg: &Message,
     args: Args,
     options: &'static HelpOptions,
@@ -89,7 +84,7 @@ async fn help(
 }
 
 #[hook]
-async fn before(_ctx: &mut Context, msg: &Message, command_name: &str) -> bool {
+async fn before(_ctx: &Context, msg: &Message, command_name: &str) -> bool {
     println!(
         "Got command '{}' by user '{}'",
         command_name, msg.author.name
@@ -100,7 +95,7 @@ async fn before(_ctx: &mut Context, msg: &Message, command_name: &str) -> bool {
 
 #[hook]
 async fn after(
-    _ctx: &mut Context,
+    _ctx: &Context,
     msg: &Message,
     command_name: &str,
     command_result: CommandResult,
@@ -117,17 +112,17 @@ async fn after(
 }
 
 #[hook]
-async fn unknown_command(_ctx: &mut Context, _msg: &Message, _unknown_command_name: &str) {
+async fn unknown_command(_ctx: &Context, _msg: &Message, _unknown_command_name: &str) {
     //println!("Could not find command named '{}'", unknown_command_name);
 }
 
 #[hook]
-async fn normal_message(_ctx: &mut Context, _msg: &Message) {
+async fn normal_message(_ctx: &Context, _msg: &Message) {
     //println!("Message is not a command '{}'", msg.content);
 }
 
 #[hook]
-async fn dispatch_error(ctx: &mut Context, msg: &Message, error: DispatchError) -> () {
+async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> () {
     if let DispatchError::Ratelimited(seconds) = error {
         let _ = msg
             .channel_id
@@ -141,7 +136,7 @@ async fn dispatch_error(ctx: &mut Context, msg: &Message, error: DispatchError) 
 
 // this function should return a prefix as a string
 #[hook]
-async fn dynamic_prefix(_ctx: &mut Context, msg: &Message) -> Option<String> {
+async fn dynamic_prefix(_ctx: &Context, msg: &Message) -> Option<String> {
     // Make sure we can actually get the guild_id, if not there's
     // no point to trying to find the prefix. Also means we can use
     // unwrap for this later on, since we Guard check it's Some() here
@@ -157,7 +152,7 @@ async fn dynamic_prefix(_ctx: &mut Context, msg: &Message) -> Option<String> {
 async fn main() {
     dotenv().ok();
     // Configure the client with your Discord bot token in the environment.
-    let token = &env::var("BOT_TOKEN").expect("Expected a discord token in the environment.");
+    let token = &env::var("DISCORD_TOKEN").expect("Expected a discord token in the environment.");
     // Note: We create the client a bit further down
 
     let http = Http::new_with_token(&token);
@@ -233,7 +228,9 @@ async fn main() {
         .group(&FUN_GROUP)
         .group(&MUSIC_GROUP);
 
-    let mut client = Client::new_with_framework(&token, Handler, framework)
+        let mut client = Client::new(&token)
+        .event_handler(Handler)
+        .framework(framework)
         .await
         .expect("Err creating client");
 

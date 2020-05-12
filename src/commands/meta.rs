@@ -34,7 +34,7 @@ impl Timer {
 #[description("Edit the bot's presence. Use the `listen`, `play`, or `reset` subcommands to set the respective activity.")]
 #[owners_only]
 #[sub_commands(activity_listen, activity_play, activity_stream, activity_reset)]
-async fn activity(ctx: &mut Context, msg: &Message) -> CommandResult {
+async fn activity(ctx: &Context, msg: &Message) -> CommandResult {
     // Send error message if no subcommands were matched.
     msg.channel_id.say(&ctx.http, "Invalid activity!").await?;
 
@@ -42,7 +42,7 @@ async fn activity(ctx: &mut Context, msg: &Message) -> CommandResult {
 }
 
 #[command("listen")]
-async fn activity_listen(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn activity_listen(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let activity = Activity::listening(args.rest());
     ctx.set_activity(activity).await;
 
@@ -54,7 +54,7 @@ async fn activity_listen(ctx: &mut Context, msg: &Message, args: Args) -> Comman
 }
 
 #[command("play")]
-async fn activity_play(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn activity_play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let activity = Activity::playing(args.rest());
     ctx.set_activity(activity).await;
 
@@ -66,7 +66,7 @@ async fn activity_play(ctx: &mut Context, msg: &Message, args: Args) -> CommandR
 }
 
 #[command("stream")]
-async fn activity_stream(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn activity_stream(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let stream_url: &str = "https://twitch.tv/smallant1"; 
     // random streamer i like i guess^^^^?
     let activity = Activity::streaming(args.rest(), stream_url);
@@ -80,7 +80,7 @@ async fn activity_stream(ctx: &mut Context, msg: &Message, args: Args) -> Comman
 }
 
 #[command("reset")]
-async fn activity_reset(ctx: &mut Context, msg: &Message) -> CommandResult {
+async fn activity_reset(ctx: &Context, msg: &Message) -> CommandResult {
     ctx.reset_presence().await;
 
     msg.channel_id
@@ -92,7 +92,7 @@ async fn activity_reset(ctx: &mut Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[description("Invite the bot to a server.")]
-async fn invite(ctx: &mut Context, msg: &Message) -> CommandResult {
+async fn invite(ctx: &Context, msg: &Message) -> CommandResult {
     // Create invite URL using the bot's user ID.
     let url = format!("Invite URL: <https://discordapp.com/oauth2/authorize?&client_id={}&scope=bot&permissions=0>", ctx.cache.read().await.user.id);
 
@@ -106,7 +106,7 @@ async fn invite(ctx: &mut Context, msg: &Message) -> CommandResult {
 #[description("Edit the bot's nickname on a server. Pass no arguments to reset nickname.")]
 #[only_in(guilds)]
 #[owners_only]
-async fn nickname(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn nickname(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if let Some(guild) = msg.guild_id {
         // Reset nickname if no args given.
         let name = if args.is_empty() {
@@ -130,7 +130,7 @@ async fn nickname(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult
 
 #[command]
 #[description("Pings Discord and shows ping time.")]
-async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
+async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
     let timer = Timer::new();
 
     let sent_msg = match msg.channel_id.say(&ctx.http, "Ping!").await {
@@ -145,7 +145,7 @@ async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
     let shard_manager = match data.get::<ShardManagerContainer>() {
         Some(v) => v,
         None => {
-            msg.reply(&ctx, "There was a problem getting the shard manager").await?;
+            msg.reply(ctx, "There was a problem getting the shard manager").await?;
 
             return Ok(());
         },
@@ -160,7 +160,7 @@ async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
     let runner = match runners.get(&ShardId(ctx.shard_id)) {
         Some(runner) => runner,
         None => {
-            msg.reply(&ctx,  "No shard found").await?;
+            msg.reply(ctx,  "No shard found").await?;
 
             return Ok(());
         },
@@ -173,7 +173,7 @@ async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
         )
     });
 
-    let _ = sent_msg.clone().edit(&ctx, |m| {
+    let _ = sent_msg.clone().edit(ctx, |m| {
         m.content(&format!(
             "Pong! \n\
             API latency: `{} ms`\n\
@@ -188,7 +188,7 @@ async fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[description("Bot stats")]
-async fn stats(ctx: &mut Context, msg: &Message) -> CommandResult {
+async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
     let pid = id().to_string();
     let cache = &ctx.cache.read().await;
 
@@ -287,7 +287,7 @@ async fn stats(ctx: &mut Context, msg: &Message) -> CommandResult {
 #[aliases(shutdown)]
 #[description("Shut down the bot.")]
 #[owners_only]
-async fn quit(ctx: &mut Context, msg: &Message) -> CommandResult {
+async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
 
     let data = ctx.data.read().await;
 

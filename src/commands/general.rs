@@ -91,7 +91,7 @@ async fn get_data(url: String) -> Result<Value, CommandError> {
 
 #[command]
 #[aliases(w)]
-async fn weather(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn weather(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     dotenv().ok();
     let darksky_key =
         env::var("DARK_SKY_KEY").expect("Expected DARK_SKY_KEY to be set in environment");

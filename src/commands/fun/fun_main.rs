@@ -34,7 +34,7 @@ struct UrbanResponse {
 #[command]
 #[aliases(ud)]
 #[description("Gets definitions from UrbanDictionary")]
-async fn urbandictionary(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn urbandictionary(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let data = get_data(&ctx, URBANDICTIONARY_API_URL, args.rest()).await?; //gets data from urbandictionary api
 
     let deserialized: UrbanResponse = serde_json::from_value(data.clone()).unwrap();
@@ -78,7 +78,7 @@ async fn urbandictionary(ctx: &mut Context, msg: &Message, args: Args) -> Comman
 
 #[command]
 #[aliases(pika)]
-async fn pikachu(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn pikachu(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let data = get_data(&ctx, RANDOM_PIKACHU_API_URL, args.rest()).await?;
     let img = data
         .pointer("/link") //where we get the data (in js would be list[0].link)

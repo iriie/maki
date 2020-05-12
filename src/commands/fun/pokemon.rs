@@ -19,22 +19,22 @@ struct MyQuery;
     "Gets things from Favna's Pokemon API. Defaults to \"pokedex\".\nSubcommands: `pokedex`"
 )]
 #[sub_commands(POKEMON_POKEDEX)]
-async fn pokemon(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn pokemon(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     pokemon_pokedex(ctx, msg, args).await?;
     Ok(())
 }
 #[command("pokedex")]
 #[aliases(dex)]
-async fn pokemon_pokedex(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
+async fn pokemon_pokedex(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let pokemon: String = args.rest().to_string();
 
     let q = MyQuery::build_query(my_query::Variables { pokemon: pokemon });
 
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::Client::new();
 
-    let res = client.post("https://favware.tech/api").json(&q).send()?;
+    let res = client.post("https://favware.tech/api").json(&q).send().await?;
 
-    let response_body: Response<my_query::ResponseData> = res.json()?;
+    let response_body: Response<my_query::ResponseData> = res.json().await?;
 
     if let Some(errors) = response_body.errors {
         println!("there are errors:");
