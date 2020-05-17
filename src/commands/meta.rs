@@ -1,14 +1,14 @@
 use crate::keys::ShardManagerContainer;
 use crate::Uptime;
+use chrono::DateTime;
+use chrono::Utc;
 use log::error;
 use serenity::client::bridge::gateway::ShardId;
 use serenity::framework::standard::macros::command;
-use serenity::framework::standard::{Args, CommandError, CommandResult};
+use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use std::process::id;
-use chrono::DateTime;
-use chrono::Utc;
 use timeago;
 
 use tokio::process::Command;
@@ -67,7 +67,7 @@ async fn activity_play(ctx: &Context, msg: &Message, args: Args) -> CommandResul
 
 #[command("stream")]
 async fn activity_stream(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let stream_url: &str = "https://twitch.tv/smallant1"; 
+    let stream_url: &str = "https://twitch.tv/smallant1";
     // random streamer i like i guess^^^^?
     let activity = Activity::streaming(args.rest(), stream_url);
     ctx.set_activity(activity).await;
@@ -140,15 +140,15 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 
     let msg_ms = timer.elapsed_ms();
 
-
     let data = ctx.data.read().await;
     let shard_manager = match data.get::<ShardManagerContainer>() {
         Some(v) => v,
         None => {
-            msg.reply(ctx, "There was a problem getting the shard manager").await?;
+            msg.reply(ctx, "There was a problem getting the shard manager")
+                .await?;
 
             return Ok(());
-        },
+        }
     };
 
     let manager = shard_manager.lock().await;
@@ -160,10 +160,10 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
     let runner = match runners.get(&ShardId(ctx.shard_id)) {
         Some(runner) => runner,
         None => {
-            msg.reply(ctx,  "No shard found").await?;
+            msg.reply(ctx, "No shard found").await?;
 
             return Ok(());
-        },
+        }
     };
 
     let runner_latency_ms = runner.latency.map(|x| {
@@ -173,15 +173,20 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
         )
     });
 
-    let _ = sent_msg.clone().edit(ctx, |m| {
-        m.content(&format!(
-            "Pong! \n\
+    let _ = sent_msg
+        .clone()
+        .edit(ctx, |m| {
+            m.content(&format!(
+                "Pong! \n\
             API latency: `{} ms`\n\
             Shard latency: `{} ms`\n",
-            msg_ms,
-            runner_latency_ms.clone().unwrap_or("(shard not found)".into()),
-        ))
-    }).await?;
+                msg_ms,
+                runner_latency_ms
+                    .clone()
+                    .unwrap_or("(shard not found)".into()),
+            ))
+        })
+        .await?;
 
     Ok(())
 }
@@ -193,30 +198,44 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
     let cache = &ctx.cache.read().await;
 
     let bot_version = env!("CARGO_PKG_VERSION");
-    let build_number = option_env!("BUILD_BUILDNUMBER");
-    let agent_name = option_env!("AGENT_MACHINENAME");
-    let agent_id = option_env!("AGENT_ID");
 
     let full_stdout = Command::new("sh")
         .arg("-c")
-        .arg(format!("./full_memory.sh {}", &pid).as_str())
+        .arg(format!("./scripts/full_mem.sh {}", &pid).as_str())
         .output()
         .await
         .expect("failed to execute process");
     let reasonable_stdout = Command::new("sh")
         .arg("-c")
-        .arg(format!("./reasonable_memory.sh {}", &pid).as_str())
+        .arg(format!("./scripts/pid_mem.sh {}", &pid).as_str())
+        .output()
+        .await
+        .expect("failed to execute process");
+    let cpu_stdout = Command::new("sh")
+        .arg("-c")
+        .arg(format!("./scripts/pid_cpu.sh {}", &pid).as_str())
+        .output()
+        .await
+        .expect("failed to execute process");
+    let git_stdout = Command::new("sh")
+        .arg("-c")
+        .arg(format!("./scripts/git_hash.sh {}", &pid).as_str())
         .output()
         .await
         .expect("failed to execute process");
 
     let mut full_mem = String::from_utf8(full_stdout.stdout).unwrap();
     let mut reasonable_mem = String::from_utf8(reasonable_stdout.stdout).unwrap();
+    let mut cpu = String::from_utf8(cpu_stdout.stdout).unwrap();
+    let mut git_commit = String::from_utf8(git_stdout.stdout).unwrap();
 
     full_mem.pop();
     full_mem.pop();
     reasonable_mem.pop();
     reasonable_mem.pop();
+    cpu.pop();
+    cpu.pop();
+    git_commit.truncate(7);
 
     let (name, discriminator) = match ctx.http.get_current_application_info().await {
         Ok(info) => (info.owner.name, info.owner.discriminator),
@@ -230,16 +249,28 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
     let users_count = &cache.users.len();
     let users_count_unique = &cache.users.len();
 
-    let current_time = Utc::now();
-    let start_time = {
+    let uptime = {
         let data = ctx.data.read().await;
         match data.get::<Uptime>() {
-            Some(val) => *val,
-            None => {
-                return Err(CommandError::from(
-                    "There was a problem getting the shard manager",
-                ))
+            Some(time) => {
+                if let Some(boot_time) = time.get("boot") {
+                    let now = Utc::now();
+                    let duration = now.signed_duration_since(boot_time.to_owned());
+                    // Transform duration into days, hours, minutes, seconds.
+                    // There's probably a cleaner way to do this.
+                    let mut seconds = duration.num_seconds();
+                    let mut minutes = seconds / 60;
+                    seconds %= 60;
+                    let mut hours = minutes / 60;
+                    minutes %= 60;
+                    let days = hours / 24;
+                    hours %= 24;
+                    format!("{}d{}h{}m{}s", days, hours, minutes, seconds)
+                } else {
+                    "Uptime not available".to_owned()
+                }
             }
+            None => "Uptime not available.".to_owned(),
         }
     };
 
@@ -247,38 +278,44 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
     f.num_items(4);
     f.ago("");
 
-    let uptime_humanized = f.convert_chrono(start_time, current_time);
-
-    let _ = msg.channel_id.send_message(&ctx.http, |m| {
-        m.embed(|e| {
-            e.color(0x3498db)
-                .title(&format!(
-                    "maki v{} - build #{} ({} #{})",
-                    bot_version,
-                    build_number.unwrap_or("N/A"),
-                    agent_name.unwrap_or("N/A"),
-                    agent_id.unwrap_or("N/A")
-                ))
-                .url("https://maki.kanbaru.me")
-                .field("Author", &owner_tag, true)
-                .field("Guilds", &guilds_count.to_string(), true)
-                .field("Channels", &channels_count.to_string(), true)
-                .field(
-                    "Users",
-                    &format!(
-                        "{} Total\n{} Unique (cached)",
-                        users_count, users_count_unique
-                    ),
-                    true,
-                )
-                .field("Memory usage", format!("Complete:\n`{} KB`\nBase:\n`{} KB`",
-                    &full_mem.parse::<u32>().expect("NaN").to_string(), &reasonable_mem.parse::<u32>().expect("NaN").to_string()), true)
-
-                .field("Bot Uptime", &uptime_humanized, false);
-            e
-        });
-        m
-    }).await; 
+    let _ = msg
+        .channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|e| {
+                e.color(0x3498db)
+                    .title(&format!(
+                        "maki v{} b{}",
+                        bot_version,
+                        git_commit,
+                    ))
+                    .url("https://maki.kanbaru.me")
+                    .field("Author", &owner_tag, true)
+                    .field("Guilds", &guilds_count.to_string(), true)
+                    .field("Channels", &channels_count.to_string(), true)
+                    .field(
+                        "Users",
+                        &format!(
+                            "{} Total\n{} Unique (cached)",
+                            users_count, users_count_unique
+                        ),
+                        true,
+                    )
+                    .field(
+                        "Memory",
+                        format!(
+                            "Total:\n`{} GB`\nUsage:\n`{} MB`",
+                            &full_mem.parse::<f32>().expect("NaN").to_string(),
+                            &reasonable_mem.parse::<f32>().expect("NaN").to_string()
+                        ),
+                        true,
+                    )
+                    .field("CPU", format!("{}%",&cpu.parse::<f32>().expect("NaN").to_string()), true)
+                .field("Bot Uptime", &uptime, false);
+                e
+            });
+            m
+        })
+        .await;
 
     Ok(())
 }
@@ -288,7 +325,6 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
 #[description("Shut down the bot.")]
 #[owners_only]
 async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
-
     let data = ctx.data.read().await;
 
     if let Some(manager) = data.get::<ShardManagerContainer>() {

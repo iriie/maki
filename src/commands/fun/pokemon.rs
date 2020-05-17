@@ -26,13 +26,13 @@ async fn pokemon(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[command("pokedex")]
 #[aliases(dex)]
 async fn pokemon_pokedex(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let pokemon: String = args.rest().to_string();
+    let pokemon: String = args.rest().to_string(); // gets args
 
-    let q = MyQuery::build_query(my_query::Variables { pokemon: pokemon });
+    let q = MyQuery::build_query(my_query::Variables { pokemon: pokemon }); // builds graphql query using args
 
     let client = reqwest::Client::new();
 
-    let res = client.post("https://favware.tech/api").json(&q).send().await?;
+    let res = client.post("https://favware.tech/api").json(&q).send().await?; // sends gql query
 
     let response_body: Response<my_query::ResponseData> = res.json().await?;
 
@@ -50,8 +50,10 @@ async fn pokemon_pokedex(ctx: &Context, msg: &Message, args: Args) -> CommandRes
 
     let response_data: my_query::ResponseData = response_body.data.expect("missing response data");
 
-    let num = rand::thread_rng().gen_range(0, &response_data.get_pokemon_details_by_fuzzy.flavor_texts.len());
-    let pokemon_types = &response_data.get_pokemon_details_by_fuzzy.types.join("/");
+    let num = rand::thread_rng().gen_range(0, &response_data.get_pokemon_details_by_fuzzy.flavor_texts.len()); // 
+
+    let pokemon_types = &response_data.get_pokemon_details_by_fuzzy.types.join("/"); // if more than one type, combines them with a "/"
+
     let _ = msg.channel_id.send_message(&ctx.http, |m| {
         m.embed(|e| {
             e.color(0x3498db)

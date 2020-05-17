@@ -1,4 +1,5 @@
-use log::{warn};
+extern crate pretty_env_logger;
+#[macro_use] extern crate log;
 use serenity::{
     async_trait,
     framework::standard::{
@@ -7,20 +8,22 @@ use serenity::{
         Args, CommandGroup, CommandResult, DispatchError, HelpOptions, StandardFramework,
     },
     http::Http,
-    model::{channel::Message, gateway::Ready, id::UserId},
+    model::{channel::Message, event::ResumedEvent, gateway::Ready, id::UserId, prelude::GuildId},
 };
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
+    env,
 };
 
+use chrono::Utc;
+
 use dotenv::dotenv;
-use std::env;
 
 #[macro_use]
 pub mod utils;
 
-mod keys;
+pub mod keys;
 use keys::*;
 
 mod commands;
@@ -30,6 +33,7 @@ use commands::general::*;
 use commands::meta::*;
 use commands::music::lastfm::*;
 use commands::music::spotify::*;
+use commands::moderator::*;
 
 // This imports `typemap`'s `Key` as `TypeMapKey`.
 use serenity::prelude::*;
@@ -38,16 +42,39 @@ struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn ready(&self, _: Context, ready: Ready) {
-        println!(
-            "{}#{} is connected!",
-            ready.user.name, ready.user.discriminator
-        );
+    async fn cache_ready(&self, _ctx: Context, guilds: Vec<GuildId>) {
+        info!("Connected to {} guilds.", guilds.len());
+    }
+
+    async fn ready(&self, ctx: Context, ready: Ready) {
+        if let Some(shard) = ready.shard {
+            info!(
+                "Connected as {} on shard {}/{}",
+                ready.user.name,
+                shard[0] + 1,
+                shard[1]
+            );
+        } else {
+            info!("Connected as {}", ready.user.name);
+        }
+        
+        // puts current time (startup) in uptime key, to be used later
+        let data = ctx.data.write();
+        match data.await.get_mut::<Uptime>() {
+            Some(uptime) => {
+                uptime.entry(String::from("boot")).or_insert_with(Utc::now);
+            }
+            None => error!("Unable to insert boot time into client data."),
+        };
+    }
+
+    async fn resume(&self, _: Context, _: ResumedEvent) {
+        info!("Resumed");
     }
 }
 
 #[group]
-#[commands(activity, nickname, quit)]
+#[commands(activity, nickname, quit, prune)]
 struct Admin;
 
 #[group]
@@ -113,16 +140,19 @@ async fn after(
 
 #[hook]
 async fn unknown_command(_ctx: &Context, _msg: &Message, _unknown_command_name: &str) {
+    // do nothing, we don't want to annoy people !!!
     //println!("Could not find command named '{}'", unknown_command_name);
 }
 
 #[hook]
 async fn normal_message(_ctx: &Context, _msg: &Message) {
+    // why would anyone enable this, unless they're logging every message???
     //println!("Message is not a command '{}'", msg.content);
 }
 
 #[hook]
 async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> () {
+    //for ratelimiting and other things
     if let DispatchError::Ratelimited(seconds) = error {
         let _ = msg
             .channel_id
@@ -151,6 +181,7 @@ async fn dynamic_prefix(_ctx: &Context, msg: &Message) -> Option<String> {
 #[tokio::main(core_threads = 8)]
 async fn main() {
     dotenv().ok();
+    pretty_env_logger::init();
     // Configure the client with your Discord bot token in the environment.
     let token = &env::var("DISCORD_TOKEN").expect("Expected a discord token in the environment.");
     // Note: We create the client a bit further down
@@ -236,11 +267,11 @@ async fn main() {
 
     {
         let mut data = client.data.write().await;
-        data.insert::<CommandCounter>(HashMap::default());
+        data.insert::<keys::Uptime>(HashMap::default());
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
     }
 
-    if let Err(why) = client.start().await {
-        println!("Client error: {:?}", why);
+    if let Err(why) = client.start_autosharded().await {
+        error!("Client error: {:?}", why);
     }
 }

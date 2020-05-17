@@ -24,7 +24,7 @@ impl TypeMapKey for ShardManagerContainer {
 
 pub struct Uptime;
 impl TypeMapKey for Uptime {
-    type Value = DateTime<Utc>;
+    type Value = HashMap<String, DateTime<Utc>>;
 }
 
 pub struct CommandCounter;
