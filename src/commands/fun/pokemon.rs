@@ -37,14 +37,12 @@ async fn pokemon_pokedex(ctx: &Context, msg: &Message, args: Args) -> CommandRes
     let response_body: Response<my_query::ResponseData> = res.json().await?;
 
     if let Some(errors) = response_body.errors {
-        println!("there are errors:");
-
         for error in &errors {
-            println!("{:?}", error);
+            error!("{:?}", error.message);
         }
         msg.channel_id.say(&ctx.http, "That pokemon could not be found.").await?;
         return Err(CommandError::from(
-            "Pokemon not found",
+            "h-No Pokémon found",
         ))
     }
 
@@ -53,7 +51,7 @@ async fn pokemon_pokedex(ctx: &Context, msg: &Message, args: Args) -> CommandRes
     let num = rand::thread_rng().gen_range(0, &response_data.get_pokemon_details_by_fuzzy.flavor_texts.len()); // 
 
     let pokemon_types = &response_data.get_pokemon_details_by_fuzzy.types.join("/"); // if more than one type, combines them with a "/"
-
+    
     let _ = msg.channel_id.send_message(&ctx.http, |m| {
         m.embed(|e| {
             e.color(0x3498db)

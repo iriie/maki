@@ -38,13 +38,10 @@ async fn urbandictionary(ctx: &Context, msg: &Message, args: Args) -> CommandRes
     let data = get_data(&ctx, URBANDICTIONARY_API_URL, args.rest()).await?; //gets data from urbandictionary api
 
     let deserialized: UrbanResponse = serde_json::from_value(data.clone()).unwrap();
-
-    println!("{:#?}", deserialized.definitions[0].word);
-
+    
     let _check_for_word = if let Some(word) = data
         .pointer("/list/0/word") //where we get the data (in js would be list[0].word)
-        .and_then(|x| x.as_str())
-    //convert to string
+        .and_then(|x| x.as_str()) //convert to string
     {
         word //assign to var
     } else {
@@ -93,8 +90,6 @@ async fn pikachu(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 async fn get_data(_ctx: &Context, url: &str, term: &str) -> Result<Value, CommandError> {
     let url = url.replace("{TERM}", &term);
     let url = clean_url(&url);
-    println!("{:#?}", url);
-    // fetch data
 
     let client = reqwest::Client::new();
 

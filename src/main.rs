@@ -1,5 +1,6 @@
 extern crate pretty_env_logger;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 use serenity::{
     async_trait,
     framework::standard::{
@@ -12,13 +13,15 @@ use serenity::{
 };
 use std::{
     collections::{HashMap, HashSet},
-    sync::Arc,
     env,
+    sync::Arc,
 };
 
 use chrono::Utc;
 
 use dotenv::dotenv;
+
+use rand::random;
 
 #[macro_use]
 pub mod utils;
@@ -31,9 +34,9 @@ use commands::fun::fun_main::*;
 use commands::fun::pokemon::*;
 use commands::general::*;
 use commands::meta::*;
+use commands::moderator::*;
 use commands::music::lastfm::*;
 use commands::music::spotify::*;
-use commands::moderator::*;
 
 // This imports `typemap`'s `Key` as `TypeMapKey`.
 use serenity::prelude::*;
@@ -57,7 +60,7 @@ impl EventHandler for Handler {
         } else {
             info!("Connected as {}", ready.user.name);
         }
-        
+
         // puts current time (startup) in uptime key, to be used later
         let data = ctx.data.write();
         match data.await.get_mut::<Uptime>() {
@@ -110,9 +113,15 @@ async fn help(
     help_commands::with_embeds(ctx, msg, args, options, groups, owners).await
 }
 
+fn rand_str(length: u32) -> String {
+    (0..length)
+        .map(|_| (0x2du8 + (random::<f32>() * 79.0) as u8) as char)
+        .collect()
+}
+
 #[hook]
 async fn before(_ctx: &Context, msg: &Message, command_name: &str) -> bool {
-    println!(
+    info!(
         "Got command '{}' by user '{}'",
         command_name, msg.author.name
     );
@@ -121,33 +130,57 @@ async fn before(_ctx: &Context, msg: &Message, command_name: &str) -> bool {
 }
 
 #[hook]
-async fn after(
-    _ctx: &Context,
-    msg: &Message,
-    command_name: &str,
-    command_result: CommandResult,
-) {
+async fn after(ctx: &Context, msg: &Message, command_name: &str, command_result: CommandResult) {
     match command_result {
-        Ok(()) => println!("Processed command '{}'", command_name),
-        Err(why) => warn!(
-            "Command `{}` triggered by `{}` has errored: \n{}",
-            command_name,
-            msg.author.tag(),
-            why.0
-        ),
+        Ok(()) => info!("Processed command '{}'", command_name),
+        Err(why) => {
+            let error_code = rand_str(7).replace("`", ",");
+            if !why.0.starts_with("h-") {
+                let _ = msg
+                    .channel_id
+                    .say(
+                        &ctx.http,
+                        &format!(
+                            "Something went wrong!\nerror: `{}` | id: `{}`",
+                            why.0, error_code
+                        ),
+                    )
+                    .await;
+            }
+            error!(
+                "Command `{}` triggered by `{}` has errored with code {}: {}",
+                command_name,
+                msg.author.tag(),
+                error_code,
+                why.0
+            );
+        }
     }
 }
 
 #[hook]
 async fn unknown_command(_ctx: &Context, _msg: &Message, _unknown_command_name: &str) {
     // do nothing, we don't want to annoy people !!!
-    //println!("Could not find command named '{}'", unknown_command_name);
+    //info!("Could not find command named '{}'", unknown_command_name);
 }
 
 #[hook]
 async fn normal_message(_ctx: &Context, _msg: &Message) {
     // why would anyone enable this, unless they're logging every message???
-    //println!("Message is not a command '{}'", msg.content);
+    // info!("Message is not a command '{}'", msg.content);
+}
+
+#[hook]
+async fn prefix_only(ctx: &Context, msg: &Message) {
+    let prefix = ">";
+    if msg.content == "<@!683934524526034994>".to_string()
+        || msg.content == "<@683934524526034994>".to_string()
+    {
+        let _ = msg
+            .channel_id
+            .say(&ctx.http, &format!("The prefix is `{}`", prefix))
+            .await;
+    }
 }
 
 #[hook]
@@ -233,6 +266,7 @@ async fn main() {
         // application if you are fine using nightly Rust.
         // If not, we need to provide the function identifiers to the
         // hook-functions (before, after, normal, ...).
+        .prefix_only(prefix_only)
         .before(before)
         // Similar to `before`, except will be called directly _after_
         // command execution.
@@ -259,7 +293,7 @@ async fn main() {
         .group(&FUN_GROUP)
         .group(&MUSIC_GROUP);
 
-        let mut client = Client::new(&token)
+    let mut client = Client::new(&token)
         .event_handler(Handler)
         .framework(framework)
         .await

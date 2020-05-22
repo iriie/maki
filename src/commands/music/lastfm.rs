@@ -22,7 +22,6 @@ const FM_TOP_TRACKS_URL: &str = "http://ws.audioscrobbler.com/2.0/?method=user.g
 #[sub_commands(LASTFM_LATEST, LASTFM_TOPSONGS, LASTFM_LATESTSONGS, LASTFM_SAVE)]
 async fn lastfm(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let data = get_lastfm_data(ctx, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
-    println!("{:#?}", args.rest());
     recent_track(ctx, msg, &data, false).await?;
 
     Ok(())
@@ -37,7 +36,6 @@ async fn lastfm_save(ctx: &Context, msg: &Message, args: Args) -> CommandResult 
 #[command("latest")]
 async fn lastfm_latest(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let data = get_lastfm_data(ctx, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
-    println!("{:#?}", args.rest());
     recent_track(ctx, msg, &data, false).await?;
 
     Ok(())
@@ -195,12 +193,10 @@ async fn recent_track(
 }
 
 async fn top_tracks(ctx: &Context, msg: &Message, data: &Value, _period: &str) {
-    println!("top track");
     let username = data
         .pointer("/toptracks/@attr/user")
         .and_then(|x| x.as_str())
         .unwrap_or("N/A");
-        println!("{}", username);
     let default_vec = vec![];
     let tracks = data
         .pointer("/toptracks/track")
@@ -214,7 +210,6 @@ async fn top_tracks(ctx: &Context, msg: &Message, data: &Value, _period: &str) {
         ).await;
         return;
     }
-    println!("{}", username);
 
     let mut s = String::new();
 
@@ -229,7 +224,6 @@ async fn top_tracks(ctx: &Context, msg: &Message, data: &Value, _period: &str) {
             .pointer("/name")
             .and_then(|x| x.as_str())
             .unwrap_or("N/A");
-            println!("{}", title);
         let url = track
             .pointer("/url")
             .and_then(|x| x.as_str())
@@ -320,13 +314,11 @@ async fn get_lastfm_data(
     username: &str,
     period: &str,
 ) -> Result<Value, CommandError> {
-    println!("{:#?}", username);
     let fm_key = &env::var("LASTFM_KEY").expect("Expected a discord token in the environment.");
     let url = url
         .replace("{USER}", &username)
         .replace("{KEY}", &fm_key)
         .replace("{PERIOD}", period);
-    println!("{:#?}", url);
     // fetch data
 
     let client = reqwest::Client::new();

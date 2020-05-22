@@ -255,17 +255,11 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
             Some(time) => {
                 if let Some(boot_time) = time.get("boot") {
                     let now = Utc::now();
-                    let duration = now.signed_duration_since(boot_time.to_owned());
-                    // Transform duration into days, hours, minutes, seconds.
-                    // There's probably a cleaner way to do this.
-                    let mut seconds = duration.num_seconds();
-                    let mut minutes = seconds / 60;
-                    seconds %= 60;
-                    let mut hours = minutes / 60;
-                    minutes %= 60;
-                    let days = hours / 24;
-                    hours %= 24;
-                    format!("{}d{}h{}m{}s", days, hours, minutes, seconds)
+                    let mut f = timeago::Formatter::new();
+                    f.num_items(4);
+                    f.ago("");
+                
+                    f.convert_chrono(boot_time.to_owned(), now)
                 } else {
                     "Uptime not available".to_owned()
                 }
@@ -284,11 +278,11 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
             m.embed(|e| {
                 e.color(0x3498db)
                     .title(&format!(
-                        "maki v{} b{}",
+                        "maki v{} #{}",
                         bot_version,
                         git_commit,
                     ))
-                    .url("https://maki.kanbaru.me")
+                    .url("https://maki.iscute.dev")
                     .field("Author", &owner_tag, true)
                     .field("Guilds", &guilds_count.to_string(), true)
                     .field("Channels", &channels_count.to_string(), true)
