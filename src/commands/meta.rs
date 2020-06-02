@@ -137,7 +137,6 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
         Ok(m) => m,
         Err(_) => return Ok(()),
     };
-
     let msg_ms = timer.elapsed_ms();
 
     let data = ctx.data.read().await;
@@ -201,40 +200,68 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
 
     let full_stdout = Command::new("sh")
         .arg("-c")
-        .arg(format!("./scripts/full_mem.sh {}", &pid).as_str())
+        .arg("grep MemTotal /proc/meminfo | awk '{print $2/1000000}'")
         .output()
         .await
         .expect("failed to execute process");
     let reasonable_stdout = Command::new("sh")
         .arg("-c")
-        .arg(format!("./scripts/pid_mem.sh {}", &pid).as_str())
+        .arg(
+            format!(
+                "pmap {} | head -n 2 | tail -n 1 | awk '/[0-9]K/{{print $2/1000}}'",
+                &pid
+            )
+            .as_str(),
+        )
         .output()
         .await
         .expect("failed to execute process");
-    let cpu_stdout = Command::new("sh")
+    let git_stdout;
+    git_stdout = Command::new("sh")
         .arg("-c")
-        .arg(format!("./scripts/pid_cpu.sh {}", &pid).as_str())
-        .output()
-        .await
-        .expect("failed to execute process");
-    let git_stdout = Command::new("sh")
-        .arg("-c")
-        .arg(format!("./scripts/git_hash.sh {}", &pid).as_str())
+        .arg("git log -1 | grep ^commit | awk '{print $2}'")
         .output()
         .await
         .expect("failed to execute process");
 
     let mut full_mem = String::from_utf8(full_stdout.stdout).unwrap();
     let mut reasonable_mem = String::from_utf8(reasonable_stdout.stdout).unwrap();
-    let mut cpu = String::from_utf8(cpu_stdout.stdout).unwrap();
-    let mut git_commit = String::from_utf8(git_stdout.stdout).unwrap();
 
+    let mut git_commit: String = "".to_string();
+
+    let cpu_stdout: std::process::Output;
+
+    if std::str::from_utf8(&git_stdout.stdout).unwrap() != "" {
+        cpu_stdout = Command::new("sh")
+            .arg("-c")
+            .arg(
+                format!(
+                    "top -b -n 2 -d 0.2 -p {} | tail -1 | awk '{{print $9}}'",
+                    &pid
+                )
+                .as_str(),
+            )
+            .output()
+            .await
+            .expect("failed to execute process");
+        git_commit.push('#');
+        git_commit.push_str(std::str::from_utf8(&git_stdout.stdout).unwrap());
+    } else {
+        cpu_stdout = Command::new("sh")
+            .arg("-c")
+            .arg("top -b -n 2 -d 0.2 | head -n 5 | tail -n 1 | awk '{{print $6}}'")
+            .output()
+            .await
+            .expect("failed to execute process");
+        git_commit.push_str("stable")
+    }
+
+    let mut cpu = String::from_utf8(cpu_stdout.stdout).unwrap();
     full_mem.pop();
     full_mem.pop();
     reasonable_mem.pop();
     reasonable_mem.pop();
-    cpu.pop();
-    cpu.pop();
+    cpu.truncate(1);
     git_commit.truncate(7);
 
     let (name, discriminator) = match ctx.http.get_current_application_info().await {
@@ -258,7 +285,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                     let mut f = timeago::Formatter::new();
                     f.num_items(4);
                     f.ago("");
-                
+
                     f.convert_chrono(boot_time.to_owned(), now)
                 } else {
                     "Uptime not available".to_owned()
@@ -277,13 +304,10 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
         .send_message(&ctx.http, |m| {
             m.embed(|e| {
                 e.color(0x3498db)
-                    .title(&format!(
-                        "maki v{} #{}",
-                        bot_version,
-                        git_commit,
-                    ))
+                    .title(&format!("maki v{} {}", bot_version, git_commit,))
                     .url("https://maki.iscute.dev")
-                    .field("Author", &owner_tag, true)
+                    .thumbnail(&format!("{}", cache.user.avatar_url().unwrap()))
+                    .field("Author", &owner_tag, false)
                     .field("Guilds", &guilds_count.to_string(), true)
                     .field("Channels", &channels_count.to_string(), true)
                     .field(
@@ -297,14 +321,15 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                     .field(
                         "Memory",
                         format!(
-                            "Total:\n`{} GB`\nUsage:\n`{} MB`",
+                            "{} GB total\n{} MB used",
                             &full_mem.parse::<f32>().expect("NaN").to_string(),
                             &reasonable_mem.parse::<f32>().expect("NaN").to_string()
                         ),
                         true,
                     )
-                    .field("CPU", format!("{}%",&cpu.parse::<f32>().expect("NaN").to_string()), true)
-                .field("Bot Uptime", &uptime, false);
+                    .field("CPU", format!("{}%", cpu), true)
+                    .field("Shards", format!("{}", cache.shard_count), true)
+                    .field("Bot Uptime", &uptime, false);
                 e
             });
             m

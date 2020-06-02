@@ -7,12 +7,18 @@ use serenity::framework::standard::CommandError;
 use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
+use serenity::utils::{
+    content_safe,
+    ContentSafeOptions,
+};
 use std::env;
 
 const GEOCODE_API_URL: &str =
     "http://dev.virtualearth.net/REST/v1/Locations/{SEARCH}?output=json&key={BING_MAPS_KEY}";
 const DARK_SKY_API_URL: &str =
     "https://api.darksky.net/forecast/{DARK_SKY_KEY}/{LAT},{LONG}?exclude=daily,minutely,flags&units=us";
+const TRANSLATE_API_URL: &str = 
+    "https://translate.yandex.net/api/v1.5/tr.json/translate?key={TRANSLATE_KEY}&text={TEXT}&lang={LANGUAGE}";
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "camelCase")]
@@ -79,8 +85,15 @@ struct DSMainStruct {
     ozone: f32,
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct YandexMainStruct {
+ code: f32,
+ lang: String,
+ text: Vec<String>,
+}
+
 async fn get_data(url: String) -> Result<Value, CommandError> {
-    println!("{:#?}", url);
 
     let client = reqwest::Client::new();
 
@@ -90,8 +103,55 @@ async fn get_data(url: String) -> Result<Value, CommandError> {
 }
 
 #[command]
+#[aliases(tr)]
+async fn translate(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.len() < 2 {
+        return Err(CommandError::from(format!("Expected a string to translate.")));
+    }
+    dotenv().ok();
+    let translate_key =
+        env::var("TRANSLATE_KEY").expect("Expected TRANSLATE_KEY to be set in environment");
+    let translate_url: &str = &TRANSLATE_API_URL
+        .replace("{LANGUAGE}", &args.single::<String>().unwrap())
+        .replace("{TEXT}", args.rest())
+        .replace("{TRANSLATE_KEY}", &translate_key)
+        .to_string();
+
+        let data = get_data(translate_url.to_string()).await?;
+
+        let _message = if let Some(message) = data
+        .pointer("/message")
+        .and_then(|x| x.as_str())
+    {
+        return Err(CommandError::from(message));
+    };
+    
+    let tr_des: YandexMainStruct = serde_json::from_value(data.clone()).unwrap();
+
+    let langs = tr_des.lang.split("-");
+    let mut lang_array: Vec<&str> = [""].to_vec();
+    for l in langs {
+        lang_array.push(l)
+    }
+
+    let _ = msg.channel_id.send_message(&ctx.http, |m| {
+        m.embed(|e| {
+            e.color(0x3498db)
+                .title(&format!(
+                    "Translate (from {} to {})",
+                    lang_array[1], lang_array[2]
+                    
+                ))
+                .description(&format!("{}", tr_des.text.join(" ")))
+        })
+    }).await;
+    Ok(())
+}
+
+#[command]
 #[aliases(w)]
 async fn weather(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    
     dotenv().ok();
     let darksky_key =
         env::var("DARK_SKY_KEY").expect("Expected DARK_SKY_KEY to be set in environment");
@@ -184,5 +244,24 @@ async fn weather(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                 .footer(|f| f.text(&format!("{}", footer)))
         })
     }).await;
+    Ok(())
+}
+
+#[command]
+#[aliases(repeat)]
+#[owners_only]
+async fn say(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let original = args.rest();
+    let g = msg.guild_id.unwrap();
+    let opts = ContentSafeOptions::new()
+    .show_discriminator(false)
+    .clean_role(true)
+    .clean_user(true)
+    .clean_everyone(true)
+    .clean_here(true)
+    .display_as_member_from(g);
+    let to_say = content_safe(&ctx.cache, &original,&opts).await;
+    msg.channel_id
+    .say(&ctx.http, format!("{}",to_say)).await?;
     Ok(())
 }

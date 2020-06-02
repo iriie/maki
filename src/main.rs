@@ -1,6 +1,5 @@
 extern crate pretty_env_logger;
-#[macro_use]
-extern crate log;
+#[macro_use] extern crate log;
 use serenity::{
     async_trait,
     framework::standard::{
@@ -78,21 +77,27 @@ impl EventHandler for Handler {
 
 #[group]
 #[commands(activity, nickname, quit, prune)]
+#[description = "admin/server/bot management stuff."]
 struct Admin;
 
 #[group]
-#[commands(weather, invite, ping, stats)]
+#[commands(translate, weather, invite, ping, stats, say)]
+#[description = "general stuff, or stuff that won't fit anywhere else."]
 struct General;
 
 #[group]
 #[commands(urbandictionary, pikachu, pokemon)]
+#[description = "funny gaming."]
 struct Fun;
 
 #[group]
 #[commands(lastfm, spotify)]
+#[description = "search or show your own music."]
 struct Music;
 
 #[help]
+#[individual_command_tip = "for more info about a command or group, pass the name as a subcommand."]
+
 #[embed_error_colour(red)]
 #[embed_success_colour(fooyoo)]
 #[lacking_ownership(hide)]
@@ -154,6 +159,7 @@ async fn after(ctx: &Context, msg: &Message, command_name: &str, command_result:
                 error_code,
                 why.0
             );
+            error!("{:#?}",why)
         }
     }
 }
@@ -200,13 +206,15 @@ async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> (
 // this function should return a prefix as a string
 #[hook]
 async fn dynamic_prefix(_ctx: &Context, msg: &Message) -> Option<String> {
+    // get the default prefix
+    let token = &env::var("PREFIX").expect("Expected a prefix in the environment.");
     // Make sure we can actually get the guild_id, if not there's
     // no point to trying to find the prefix. Also means we can use
     // unwrap for this later on, since we Guard check it's Some() here
     msg.guild_id?;
     let p;
 
-    p = ">".to_string();
+    p = token.to_string();
 
     Some(p)
 }
@@ -250,7 +258,7 @@ async fn main() {
                 // In this case, if "," would be first, a message would never
                 // be delimited at ", ", forcing you to trim your arguments if you
                 // want to avoid whitespaces at the start of each.
-                .delimiters(vec![", ", ","])
+                .delimiters(vec![", ", ",", " "])
                 // Sets the bot's owners. These will be used for commands that
                 // are owners only.
                 .owners(owners)

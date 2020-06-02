@@ -16,15 +16,14 @@ RUN cargo build --release --target x86_64-unknown-linux-musl
 # Build the actual source
 COPY src ./src
 COPY graphql ./graphql
-COPY scripts ./scripts
 RUN touch ./src/main.rs && cargo build --release --target x86_64-unknown-linux-musl
-RUN ls target/release
-RUN find "$(pwd)"
 
 # Create a minimal docker file with only the resulting binary
-FROM scratch
+FROM alpine
+
 ARG project_name
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /usr/src/$project_name/target/x86_64-unknown-linux-musl/release/$project_name ./app
+RUN apk add --no-cache bash
 USER 1000
 CMD ["./app"]

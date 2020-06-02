@@ -1,2 +1,2 @@
 #!/bin/bash
-git log -1 | grep ^commit | cut -d " " -f 2
+git log -1 | grep ^commit | awk '{print $2}'
