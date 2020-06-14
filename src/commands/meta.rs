@@ -2,14 +2,15 @@ use crate::keys::ShardManagerContainer;
 use crate::Uptime;
 use chrono::DateTime;
 use chrono::Utc;
+use heim::{memory, process, units};
 use log::error;
 use serenity::client::bridge::gateway::ShardId;
 use serenity::framework::standard::macros::command;
 use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
-use std::process::id;
 use timeago;
+use tokio::time;
 
 use tokio::process::Command;
 
@@ -193,29 +194,23 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[description("Bot stats")]
 async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
-    let pid = id().to_string();
     let cache = &ctx.cache.read().await;
 
     let bot_version = env!("CARGO_PKG_VERSION");
 
-    let full_stdout = Command::new("sh")
-        .arg("-c")
-        .arg("grep MemTotal /proc/meminfo | awk '{print $2/1000000}'")
-        .output()
-        .await
-        .expect("failed to execute process");
-    let reasonable_stdout = Command::new("sh")
-        .arg("-c")
-        .arg(
-            format!(
-                "pmap {} | head -n 2 | tail -n 1 | awk '/[0-9]K/{{print $2/1000}}'",
-                &pid
-            )
-            .as_str(),
-        )
-        .output()
-        .await
-        .expect("failed to execute process");
+    let memory = memory::memory().await.unwrap();
+    // get current process
+    let process = process::current().await.unwrap();
+    // get current ram
+    let thismem = process.memory().await.unwrap();
+    let fullmem = memory.total();
+    // get current cpu
+    let cpu_1 = process.cpu_usage().await.unwrap();
+
+    time::delay_for(time::Duration::from_millis(100)).await;
+
+    let cpu_2 = process.cpu_usage().await.unwrap();
+
     let git_stdout;
     git_stdout = Command::new("sh")
         .arg("-c")
@@ -224,44 +219,14 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
         .await
         .expect("failed to execute process");
 
-    let mut full_mem = String::from_utf8(full_stdout.stdout).unwrap();
-    let mut reasonable_mem = String::from_utf8(reasonable_stdout.stdout).unwrap();
-
     let mut git_commit: String = "".to_string();
 
-    let cpu_stdout: std::process::Output;
-
     if std::str::from_utf8(&git_stdout.stdout).unwrap() != "" {
-        cpu_stdout = Command::new("sh")
-            .arg("-c")
-            .arg(
-                format!(
-                    "top -b -n 2 -d 0.2 -p {} | tail -1 | awk '{{print $9}}'",
-                    &pid
-                )
-                .as_str(),
-            )
-            .output()
-            .await
-            .expect("failed to execute process");
         git_commit.push('#');
         git_commit.push_str(std::str::from_utf8(&git_stdout.stdout).unwrap());
     } else {
-        cpu_stdout = Command::new("sh")
-            .arg("-c")
-            .arg("top -b -n 2 -d 0.2 | head -n 5 | tail -n 1 | awk '{{print $6}}'")
-            .output()
-            .await
-            .expect("failed to execute process");
         git_commit.push_str("stable")
     }
-
-    let mut cpu = String::from_utf8(cpu_stdout.stdout).unwrap();
-    full_mem.pop();
-    full_mem.pop();
-    reasonable_mem.pop();
-    reasonable_mem.pop();
-    cpu.truncate(1);
     git_commit.truncate(7);
 
     let (name, discriminator) = match ctx.http.get_current_application_info().await {
@@ -273,8 +238,8 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
 
     let guilds_count = &cache.guilds.len();
     let channels_count = &cache.channels.len();
-    let users_count = &cache.users.len();
-    let users_count_unique = &cache.users.len();
+    let users_count = cache.users.len();
+    let users_count_unknown= cache.unknown_members().await as usize;
 
     let uptime = {
         let data = ctx.data.read().await;
@@ -314,20 +279,24 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                         "Users",
                         &format!(
                             "{} Total\n{} Unique (cached)",
-                            users_count, users_count_unique
+                            &users_count + &users_count_unknown, users_count
                         ),
                         true,
                     )
                     .field(
                         "Memory",
                         format!(
-                            "{} GB total\n{} MB used",
-                            &full_mem.parse::<f32>().expect("NaN").to_string(),
-                            &reasonable_mem.parse::<f32>().expect("NaN").to_string()
+                            "{} MB used \n{} GB total",
+                            &thismem.rss().get::<units::information::megabyte>(),
+                            &fullmem.get::<units::information::gigabyte>()
                         ),
                         true,
                     )
-                    .field("CPU", format!("{}%", cpu), true)
+                    .field(
+                        "CPU",
+                        format!("{}%", (cpu_2 - cpu_1).get::<units::ratio::percent>()),
+                        true,
+                    )
                     .field("Shards", format!("{}", cache.shard_count), true)
                     .field("Bot Uptime", &uptime, false);
                 e
@@ -340,10 +309,29 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
-#[aliases(shutdown)]
+#[aliases(shutdown, kill)]
 #[description("Shut down the bot.")]
 #[owners_only]
 async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
+    let data = ctx.data.read().await;
+
+    if let Some(manager) = data.get::<ShardManagerContainer>() {
+        msg.channel_id.say(&ctx.http, "Shutting down!").await?;
+
+        // Shut down all shards.
+        manager.lock().await.shutdown_all().await;
+    } else {
+        error!("There was a problem getting the shard manager.");
+    }
+
+    Ok(())
+}
+
+#[command]
+#[aliases(pre)]
+#[description("Change the bot's prefix (this server only).")]
+#[owners_only]
+async fn prefix(ctx: &Context, msg: &Message) -> CommandResult {
     let data = ctx.data.read().await;
 
     if let Some(manager) = data.get::<ShardManagerContainer>() {

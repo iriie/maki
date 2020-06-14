@@ -2,6 +2,7 @@ extern crate pretty_env_logger;
 #[macro_use] extern crate log;
 use serenity::{
     async_trait,
+    //client::bridge::gateway::GatewayIntents,
     framework::standard::{
         help_commands,
         macros::{group, help, hook},
@@ -36,6 +37,8 @@ use commands::meta::*;
 use commands::moderator::*;
 use commands::music::lastfm::*;
 use commands::music::spotify::*;
+
+use utils::db::get_pool;
 
 // This imports `typemap`'s `Key` as `TypeMapKey`.
 use serenity::prelude::*;
@@ -192,7 +195,8 @@ async fn prefix_only(ctx: &Context, msg: &Message) {
 #[hook]
 async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> () {
     //for ratelimiting and other things
-    if let DispatchError::Ratelimited(seconds) = error {
+    match error {
+    DispatchError::Ratelimited(seconds) => {
         let _ = msg
             .channel_id
             .say(
@@ -200,7 +204,22 @@ async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> (
                 &format!("Try this again in {} seconds.", seconds),
             )
             .await;
-    };
+    },
+    DispatchError::NotEnoughArguments {min, given} => {
+        let ret = {
+            if given > 1 {
+            format!("{} arguments needed, while {} were provided.", min, given)
+            } else if given == 1 {format!("{} arguments needed while {} was provided.", min, given)}
+            else {format!("{} arguments needed.", min)}
+        };
+        let _ = msg.channel_id.say(&ctx.http, ret).await;
+    },
+    _ => {
+        error!("Dispatch error: {:?}", error);
+    }
+
+}
+
 }
 
 // this function should return a prefix as a string
@@ -304,6 +323,11 @@ async fn main() {
     let mut client = Client::new(&token)
         .event_handler(Handler)
         .framework(framework)
+        //.intents({
+        //    let mut intents = GatewayIntents::all();
+        //    intents.remove(GatewayIntents::GUILD_PRESENCES);
+        //    intents
+        //})
         .await
         .expect("Err creating client");
 
@@ -311,6 +335,9 @@ async fn main() {
         let mut data = client.data.write().await;
         data.insert::<keys::Uptime>(HashMap::default());
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
+        let pool = get_pool().await.unwrap();
+        data.insert::<ConnectionPool>(pool.clone());
+
     }
 
     if let Err(why) = client.start_autosharded().await {

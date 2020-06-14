@@ -9,6 +9,8 @@ use std::{
     collections::HashMap,
 };
 
+use sqlx::PgPool;
+
 use tokio::sync::Mutex;
 
 use chrono::{DateTime, Utc};
@@ -31,4 +33,10 @@ pub struct CommandCounter;
 
 impl TypeMapKey for CommandCounter {
     type Value = HashMap<String, u64>;
+}
+
+pub struct ConnectionPool;
+
+impl TypeMapKey for ConnectionPool {
+    type Value = PgPool;
 }
