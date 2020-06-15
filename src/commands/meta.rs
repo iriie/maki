@@ -264,6 +264,12 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
     f.num_items(4);
     f.ago("");
 
+    let shard_plural = if cache.shard_count > 1 {
+        "s"
+    } else {
+        ""
+    };
+
     let _ = msg
         .channel_id
         .send_message(&ctx.http, |m| {
@@ -297,7 +303,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                         format!("`{}%`", (cpu_2 - cpu_1).get::<units::ratio::percent>()),
                         true,
                     )
-                    .field("Shards", format!("`{} shard` ", cache.shard_count), true)
+                    .field("Shards", format!("`{} shard{}` ", cache.shard_count, shard_plural), true)
                     .field("Bot Uptime", &uptime, false);
                 e
             });
