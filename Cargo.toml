@@ -1,6 +1,6 @@
 [package]
 name = "maki"
-version = "0.1.5"
+version = "0.1.0"
 authors = ["emma <kanbaru@iscute.dev>"]
 edition = "2018"
 
