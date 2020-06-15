@@ -1,0 +1,92 @@
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - "*"
+
+name: Create/Upload Release
+
+jobs:
+  build:
+    name: Create/Upload Release
+    runs-on: ubuntu-latest
+    #services:
+      #postgres:
+        #image: postgres:alpine
+        #env:
+        #  POSTGRES_USER: postgres
+        #  POSTGRES_PASSWORD: postgres
+        #  POSTGRES_DB: postgres
+        #ports:
+          # will assign a random free host port
+        #  - 5432/tcp
+        # needed because the postgres container does not provide a healthcheck
+        #options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-release-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-release-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run cargo build
+        uses: actions-rs/cargo@v1
+        #env:
+        #  DATABASE_URL: postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres
+        with:
+          command: build
+          args: --release
+
+      - name: Install blake2 for checksum
+        uses: actions-rs/install@v0.1
+        with:
+          crate: blake2_bin
+          version: latest
+          use-tool-cache: true
+
+      - name: Create archive
+        run: |
+          sh ci/before_deploy.sh
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: ./maki.tar.gz
+          asset_name: maki.tar.gz
+          asset_content_type: application/gzip
