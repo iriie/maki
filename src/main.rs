@@ -208,9 +208,10 @@ async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> (
         DispatchError::NotEnoughArguments { min, given } => {
             let ret = {
                 if given > 1 {
-                    format!("{} arguments needed, while {} were provided.", min, given)
+                    format!("{} arguments needed but {} were provided.", min, given)
                 } else if given == 1 {
-                    format!("{} arguments needed while {} was provided.", min, given)
+                    format!("{} arguments needed but
+                     {} was provided.", min, given)
                 } else {
                     format!("{} arguments needed.", min)
                 }
