@@ -278,7 +278,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                     .field(
                         "Users",
                         &format!(
-                            "{} Total\n{} Unique (cached)",
+                            "`{} Total`\n`{} Cached`",
                             &users_count + &users_count_unknown, users_count
                         ),
                         true,
@@ -286,7 +286,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                     .field(
                         "Memory",
                         format!(
-                            "{} MB used \n{} GB total",
+                            "`{} MB used` \n`{} GB total`",
                             &thismem.rss().get::<units::information::megabyte>(),
                             &fullmem.get::<units::information::gigabyte>()
                         ),
@@ -294,10 +294,10 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                     )
                     .field(
                         "CPU",
-                        format!("{}%", (cpu_2 - cpu_1).get::<units::ratio::percent>()),
+                        format!("`{}%`", (cpu_2 - cpu_1).get::<units::ratio::percent>()),
                         true,
                     )
-                    .field("Shards", format!("{}", cache.shard_count), true)
+                    .field("Shards", format!("`{} shard` ", cache.shard_count), true)
                     .field("Bot Uptime", &uptime, false);
                 e
             });

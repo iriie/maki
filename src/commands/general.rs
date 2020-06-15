@@ -252,14 +252,14 @@ async fn weather(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[owners_only]
 async fn say(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let original = args.rest();
-    let g = msg.guild_id.unwrap();
+    //let g = msg.guild_id.unwrap();
     let opts = ContentSafeOptions::new()
-    .show_discriminator(false)
+    //.show_discriminator(true)
     .clean_role(true)
-    .clean_user(true)
+    .clean_user(false)
     .clean_everyone(true)
-    .clean_here(true)
-    .display_as_member_from(g);
+    .clean_here(true);
+    //.display_as_member_from(g);
     let to_say = content_safe(&ctx.cache, &original,&opts).await;
     msg.channel_id
     .say(&ctx.http, format!("{}",to_say)).await?;

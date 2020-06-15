@@ -2,7 +2,7 @@ extern crate pretty_env_logger;
 #[macro_use] extern crate log;
 use serenity::{
     async_trait,
-    //client::bridge::gateway::GatewayIntents,
+    client::bridge::gateway::GatewayIntents,
     framework::standard::{
         help_commands,
         macros::{group, help, hook},
@@ -323,11 +323,13 @@ async fn main() {
     let mut client = Client::new(&token)
         .event_handler(Handler)
         .framework(framework)
-        //.intents({
-        //    let mut intents = GatewayIntents::all();
-        //    intents.remove(GatewayIntents::GUILD_PRESENCES);
-        //    intents
-        //})
+        .intents({
+            let mut intents = GatewayIntents::all();
+            intents.remove(GatewayIntents::GUILD_PRESENCES);
+            intents.remove(GatewayIntents::DIRECT_MESSAGE_TYPING);
+            intents.remove(GatewayIntents::GUILD_MESSAGE_TYPING);
+            intents
+        })
         .await
         .expect("Err creating client");
 
