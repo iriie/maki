@@ -1,3 +1,4 @@
+# basically copied straight from here: https://github.com/Arzte/Arzte-bot/blob/master/.github/workflows/create_release.yml
 on:
   push:
     # Sequence of patterns matched against refs/tags
