@@ -1,4 +1,4 @@
-name: Rust
+name: Lint and Format
 
 on:
   push:
@@ -10,17 +10,11 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  format:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
-
+    - run: cargo fmt -- --check
   clippy:
     runs-on: ubuntu-latest
     steps:
