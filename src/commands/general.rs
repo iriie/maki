@@ -7,17 +7,14 @@ use serenity::framework::standard::CommandError;
 use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
-use serenity::utils::{
-    content_safe,
-    ContentSafeOptions,
-};
+use serenity::utils::{content_safe, ContentSafeOptions};
 use std::env;
 
 const GEOCODE_API_URL: &str =
     "http://dev.virtualearth.net/REST/v1/Locations/{SEARCH}?output=json&key={BING_MAPS_KEY}";
 const DARK_SKY_API_URL: &str =
     "https://api.darksky.net/forecast/{DARK_SKY_KEY}/{LAT},{LONG}?exclude=daily,minutely,flags&units=us";
-const TRANSLATE_API_URL: &str = 
+const TRANSLATE_API_URL: &str =
     "https://translate.yandex.net/api/v1.5/tr.json/translate?key={TRANSLATE_KEY}&text={TEXT}&lang={LANGUAGE}";
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -88,13 +85,12 @@ struct DSMainStruct {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct YandexMainStruct {
- code: f32,
- lang: String,
- text: Vec<String>,
+    code: f32,
+    lang: String,
+    text: Vec<String>,
 }
 
 async fn get_data(url: String) -> Result<Value, CommandError> {
-
     let client = reqwest::Client::new();
 
     let resp = client.get(&url).send().await?.json().await?;
@@ -106,7 +102,9 @@ async fn get_data(url: String) -> Result<Value, CommandError> {
 #[aliases(tr)]
 async fn translate(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     if args.len() < 2 {
-        return Err(CommandError::from(format!("Expected a string to translate.")));
+        return Err(CommandError::from(format!(
+            "Expected a string to translate."
+        )));
     }
     dotenv().ok();
     let translate_key =
@@ -117,15 +115,12 @@ async fn translate(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
         .replace("{TRANSLATE_KEY}", &translate_key)
         .to_string();
 
-        let data = get_data(translate_url.to_string()).await?;
+    let data = get_data(translate_url.to_string()).await?;
 
-        let _message = if let Some(message) = data
-        .pointer("/message")
-        .and_then(|x| x.as_str())
-    {
+    let _message = if let Some(message) = data.pointer("/message").and_then(|x| x.as_str()) {
         return Err(CommandError::from(message));
     };
-    
+
     let tr_des: YandexMainStruct = serde_json::from_value(data.clone()).unwrap();
 
     let langs = tr_des.lang.split("-");
@@ -134,24 +129,25 @@ async fn translate(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
         lang_array.push(l)
     }
 
-    let _ = msg.channel_id.send_message(&ctx.http, |m| {
-        m.embed(|e| {
-            e.color(0x3498db)
-                .title(&format!(
-                    "Translate (from {} to {})",
-                    lang_array[1], lang_array[2]
-                    
-                ))
-                .description(&format!("{}", tr_des.text.join(" ")))
+    let _ = msg
+        .channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|e| {
+                e.color(0x3498db)
+                    .title(&format!(
+                        "Translate (from {} to {})",
+                        lang_array[1], lang_array[2]
+                    ))
+                    .description(&format!("{}", tr_des.text.join(" ")))
+            })
         })
-    }).await;
+        .await;
     Ok(())
 }
 
 #[command]
 #[aliases(w)]
 async fn weather(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    
     dotenv().ok();
     let darksky_key =
         env::var("DARK_SKY_KEY").expect("Expected DARK_SKY_KEY to be set in environment");
@@ -166,7 +162,8 @@ async fn weather(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let geocode_des: Geocode = serde_json::from_value(data.clone()).unwrap();
     if geocode_des.resource_sets[0].resources.len() == 0 {
         msg.channel_id
-            .say(&ctx.http, "That place could not be found.").await?;
+            .say(&ctx.http, "That place could not be found.")
+            .await?;
         return Err(CommandError::from("Place not found"));
     }
 
@@ -200,50 +197,56 @@ async fn weather(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         dark_sky_des.currently.wind_bearing
     );
 
-    let _ = msg.channel_id.send_message(&ctx.http, |m| {
-        m.embed(|e| {
-            e.color(0x3498db)
-                .title(&format!(
-                    "Weather for {}",
-                    geocode_des.resource_sets[0].resources[0].name
-                ))
-                .url(&format!(
-                    "https://darksky.net/forecast/{},{}",
-                    geocode_des.resource_sets[0].resources[0].point.coordinates[0],
-                    geocode_des.resource_sets[0].resources[0].point.coordinates[1]
-                ))
-                .thumbnail(&format!(
-                    "https://darksky.net/images/weather-icons/{}.png",
-                    dark_sky_des.currently.icon
-                ))
-                .description(&format!("{}", dark_sky_des.hourly.summary))
-                .field(
-                    "Temperature",
-                    format!(
-                        "Current: {}°F ({}°C)\nFeels Like: {}°F ({}°C)",
-                        dark_sky_des.currently.temperature.round(),
-                       ((dark_sky_des.currently.temperature - 32.0) * 5.0/9.0).round(),
-                        dark_sky_des.currently.apparent_temperature.round(),
-                        ((dark_sky_des.currently.apparent_temperature - 32.0) * 5.0/9.0).round()
-                    ),
-                    true,
-                )
-                .field(
-                    "Precipitation",
-                    format!("Chance: {}%", dark_sky_des.currently.precip_probability),
-                    true,
-                )
-                .field(
-                    "Etc.",
-                    format!(
-                        "Speed: {:.2}mph ({:.2}kph)\nDirection: {}",
-                        dark_sky_des.currently.precip_probability, dark_sky_des.currently.precip_probability*1.609, wind_direction
-                    ),
-                    true,
-                )
-                .footer(|f| f.text(&format!("{}", footer)))
+    let _ = msg
+        .channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|e| {
+                e.color(0x3498db)
+                    .title(&format!(
+                        "Weather for {}",
+                        geocode_des.resource_sets[0].resources[0].name
+                    ))
+                    .url(&format!(
+                        "https://darksky.net/forecast/{},{}",
+                        geocode_des.resource_sets[0].resources[0].point.coordinates[0],
+                        geocode_des.resource_sets[0].resources[0].point.coordinates[1]
+                    ))
+                    .thumbnail(&format!(
+                        "https://darksky.net/images/weather-icons/{}.png",
+                        dark_sky_des.currently.icon
+                    ))
+                    .description(&format!("{}", dark_sky_des.hourly.summary))
+                    .field(
+                        "Temperature",
+                        format!(
+                            "Current: {}°F ({}°C)\nFeels Like: {}°F ({}°C)",
+                            dark_sky_des.currently.temperature.round(),
+                            ((dark_sky_des.currently.temperature - 32.0) * 5.0 / 9.0).round(),
+                            dark_sky_des.currently.apparent_temperature.round(),
+                            ((dark_sky_des.currently.apparent_temperature - 32.0) * 5.0 / 9.0)
+                                .round()
+                        ),
+                        true,
+                    )
+                    .field(
+                        "Precipitation",
+                        format!("Chance: {}%", dark_sky_des.currently.precip_probability),
+                        true,
+                    )
+                    .field(
+                        "Etc.",
+                        format!(
+                            "Speed: {:.2}mph ({:.2}kph)\nDirection: {}",
+                            dark_sky_des.currently.precip_probability,
+                            dark_sky_des.currently.precip_probability * 1.609,
+                            wind_direction
+                        ),
+                        true,
+                    )
+                    .footer(|f| f.text(&format!("{}", footer)))
+            })
         })
-    }).await;
+        .await;
     Ok(())
 }
 
@@ -254,14 +257,13 @@ async fn say(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let original = args.rest();
     //let g = msg.guild_id.unwrap();
     let opts = ContentSafeOptions::new()
-    //.show_discriminator(true)
-    .clean_role(true)
-    .clean_user(false)
-    .clean_everyone(true)
-    .clean_here(true);
+        //.show_discriminator(true)
+        .clean_role(true)
+        .clean_user(false)
+        .clean_everyone(true)
+        .clean_here(true);
     //.display_as_member_from(g);
-    let to_say = content_safe(&ctx.cache, &original,&opts).await;
-    msg.channel_id
-    .say(&ctx.http, format!("{}",to_say)).await?;
+    let to_say = content_safe(&ctx.cache, &original, &opts).await;
+    msg.channel_id.say(&ctx.http, format!("{}", to_say)).await?;
     Ok(())
 }

@@ -239,7 +239,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
     let guilds_count = &cache.guilds.len();
     let channels_count = &cache.channels.len();
     let users_count = cache.users.len();
-    let users_count_unknown= cache.unknown_members().await as usize;
+    let users_count_unknown = cache.unknown_members().await as usize;
 
     let uptime = {
         let data = ctx.data.read().await;
@@ -264,11 +264,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
     f.num_items(4);
     f.ago("");
 
-    let shard_plural = if cache.shard_count > 1 {
-        "s"
-    } else {
-        ""
-    };
+    let shard_plural = if cache.shard_count > 1 { "s" } else { "" };
 
     let _ = msg
         .channel_id
@@ -285,7 +281,8 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                         "Users",
                         &format!(
                             "`{} Total`\n`{} Cached`",
-                            &users_count + &users_count_unknown, users_count
+                            &users_count + &users_count_unknown,
+                            users_count
                         ),
                         true,
                     )
@@ -303,7 +300,11 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                         format!("`{}%`", (cpu_2 - cpu_1).get::<units::ratio::percent>()),
                         true,
                     )
-                    .field("Shards", format!("`{} shard{}` ", cache.shard_count, shard_plural), true)
+                    .field(
+                        "Shards",
+                        format!("`{} shard{}` ", cache.shard_count, shard_plural),
+                        true,
+                    )
                     .field("Bot Uptime", &uptime, false);
                 e
             });

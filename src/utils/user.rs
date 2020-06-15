@@ -1,4 +1,3 @@
-
 pub fn get_id(value: &str) -> Option<u64> {
     // check if it's already an ID
     if let Ok(id) = value.parse::<u64>() {

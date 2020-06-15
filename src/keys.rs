@@ -1,13 +1,8 @@
-use serenity::{
-    client::bridge::gateway::ShardManager,
-};
+use serenity::client::bridge::gateway::ShardManager;
 
 use serenity::prelude::*;
 
-use std::{
-    sync::Arc,
-    collections::HashMap,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use sqlx::PgPool;
 

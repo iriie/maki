@@ -36,15 +36,18 @@ struct UrbanResponse {
 #[description("Gets definitions from UrbanDictionary")]
 async fn urbandictionary(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if msg.channel(ctx).await.unwrap().guild().unwrap().is_nsfw() == false {
-        return Err(CommandError::from("This command must be run in an NSFW Channel."));
+        return Err(CommandError::from(
+            "This command must be run in an NSFW Channel.",
+        ));
     }
     let data = get_data(&ctx, URBANDICTIONARY_API_URL, args.rest()).await?; //gets data from urbandictionary api
 
     let deserialized: UrbanResponse = serde_json::from_value(data.clone()).unwrap();
-    
+
     let _check_for_word = if let Some(word) = data
         .pointer("/list/0/word") //where we get the data (in js would be list[0].word)
-        .and_then(|x| x.as_str()) //convert to string
+        .and_then(|x| x.as_str())
+    //convert to string
     {
         word //assign to var
     } else {

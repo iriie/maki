@@ -11,5 +11,7 @@ pub fn escape_html(s: &str) -> String {
 }
 
 pub fn clean_url(url: &str) -> String {
-    url.replace("(", "%28").replace(")", "%29").replace(" ", "%20")
+    url.replace("(", "%28")
+        .replace(")", "%29")
+        .replace(" ", "%20")
 }

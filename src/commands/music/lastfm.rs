@@ -157,37 +157,40 @@ async fn recent_track(
         .and_then(|x| x.as_str())
         .unwrap_or("N/A");
 
-    let _ = msg.channel_id.send_message(&ctx.http, |m| {
-        let mut m = m;
+    let _ = msg
+        .channel_id
+        .send_message(&ctx.http, |m| {
+            let mut m = m;
 
-        if saved {
-            m = m.content("kanb");
-        }
+            if saved {
+                m = m.content("kanb");
+            }
 
-        let desc = "[".to_string()
-            + &last_track_name.to_string()
-            + "]("
-            + &last_track_url.to_string()
-            + ") by "
-            + &last_track_artist.to_string()
-            + "\non "
-            + &last_track_album.to_string()
-            + "\n[view on last.fm >]("
-            + &last_track_url.to_string()
-            + ")";
+            let desc = "[".to_string()
+                + &last_track_name.to_string()
+                + "]("
+                + &last_track_url.to_string()
+                + ") by "
+                + &last_track_artist.to_string()
+                + "\non "
+                + &last_track_album.to_string()
+                + "\n[view on last.fm >]("
+                + &last_track_url.to_string()
+                + ")";
 
-        m.embed(|e| {
-            e.author(|a| {
-                a.name(&format!("{}'s {}", username, last_track_status))
-                    .url(&format!("https://www.last.fm/user/{}", username))
+            m.embed(|e| {
+                e.author(|a| {
+                    a.name(&format!("{}'s {}", username, last_track_status))
+                        .url(&format!("https://www.last.fm/user/{}", username))
+                })
+                .color(0xb90000)
+                .description(desc)
+                .thumbnail(last_track_image)
+                .footer(|f| f.text(format!("Total Tracks: {}", total_tracks)))
+                .timestamp(last_track_timestamp.to_string())
             })
-            .color(0xb90000)
-            .description(desc)
-            .thumbnail(last_track_image)
-            .footer(|f| f.text(format!("Total Tracks: {}", total_tracks)))
-            .timestamp(last_track_timestamp.to_string())
         })
-    }).await;
+        .await;
 
     Ok(())
 }
@@ -204,10 +207,13 @@ async fn top_tracks(ctx: &Context, msg: &Message, data: &Value, _period: &str) {
         .unwrap_or(&default_vec);
 
     if tracks.is_empty() {
-        let _ = msg.channel_id.say(
-            &ctx.http,
-            "No recent tracks found. Go listen to some stuff!",
-        ).await;
+        let _ = msg
+            .channel_id
+            .say(
+                &ctx.http,
+                "No recent tracks found. Go listen to some stuff!",
+            )
+            .await;
         return;
     }
 
@@ -277,7 +283,7 @@ async fn recent_tracks(ctx: &Context, msg: &Message, data: &Value) {
             .pointer("/name")
             .and_then(|x| x.as_str())
             .unwrap_or("N/A");
-        let url = track 
+        let url = track
             .pointer("/url")
             .and_then(|x| x.as_str())
             .unwrap_or("N/A");
@@ -303,8 +309,14 @@ async fn recent_tracks(ctx: &Context, msg: &Message, data: &Value) {
     send_last_fm_embed(ctx, msg, None, &title, username, &s, first_image).await;
 }
 
-async fn save_lastfm_username(ctx: &Context, msg: &Message, user: u64, args: &Args){
-    let tosay = "".to_string() + &msg.author.tag() + "(" + &user.to_string() + ")" + "'s last.fm username will be saved as " + args.rest();
+async fn save_lastfm_username(ctx: &Context, msg: &Message, user: u64, args: &Args) {
+    let tosay = "".to_string()
+        + &msg.author.tag()
+        + "("
+        + &user.to_string()
+        + ")"
+        + "'s last.fm username will be saved as "
+        + args.rest();
     let _ = msg.channel_id.say(&ctx.http, tosay);
 }
 
@@ -323,13 +335,9 @@ async fn get_lastfm_data(
 
     let client = reqwest::Client::new();
 
-    let resp = client.get(&url)
-    .send()
-    .await?
-    .json()
-    .await?;
+    let resp = client.get(&url).send().await?.json().await?;
 
-Ok(resp)
+    Ok(resp)
 }
 
 async fn send_last_fm_embed(
@@ -353,23 +361,26 @@ async fn send_last_fm_embed(
         count = truncated_desc.len();
     }
 
-    let _ = msg.channel_id.send_message(&ctx.http, |m| {
-        let mut m = m;
+    let _ = msg
+        .channel_id
+        .send_message(&ctx.http, |m| {
+            let mut m = m;
 
-        if let Some(content) = content {
-            m = m.content(content);
-        }
+            if let Some(content) = content {
+                m = m.content(content);
+            }
 
-        m.embed(|e| {
-            e.author(|a| {
-                a.name(title)
-                    .url(&format!("https://www.last.fm/user/{}", username))
-            })
-            .color(0xb90000)
-            .description(&truncated_desc)
-            .thumbnail(thumbnail);
-            e
-        });
-        m
-    }).await;
+            m.embed(|e| {
+                e.author(|a| {
+                    a.name(title)
+                        .url(&format!("https://www.last.fm/user/{}", username))
+                })
+                .color(0xb90000)
+                .description(&truncated_desc)
+                .thumbnail(thumbnail);
+                e
+            });
+            m
+        })
+        .await;
 }

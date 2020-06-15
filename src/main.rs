@@ -1,5 +1,6 @@
 extern crate pretty_env_logger;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 use serenity::{
     async_trait,
     client::bridge::gateway::GatewayIntents,
@@ -100,7 +101,6 @@ struct Music;
 
 #[help]
 #[individual_command_tip = "for more info about a command or group, pass the name as a subcommand."]
-
 #[embed_error_colour(red)]
 #[embed_success_colour(fooyoo)]
 #[lacking_ownership(hide)]
@@ -162,7 +162,7 @@ async fn after(ctx: &Context, msg: &Message, command_name: &str, command_result:
                 error_code,
                 why.0
             );
-            error!("{:#?}",why)
+            error!("{:#?}", why)
         }
     }
 }
@@ -196,30 +196,31 @@ async fn prefix_only(ctx: &Context, msg: &Message) {
 async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> () {
     //for ratelimiting and other things
     match error {
-    DispatchError::Ratelimited(seconds) => {
-        let _ = msg
-            .channel_id
-            .say(
-                &ctx.http,
-                &format!("Try this again in {} seconds.", seconds),
-            )
-            .await;
-    },
-    DispatchError::NotEnoughArguments {min, given} => {
-        let ret = {
-            if given > 1 {
-            format!("{} arguments needed, while {} were provided.", min, given)
-            } else if given == 1 {format!("{} arguments needed while {} was provided.", min, given)}
-            else {format!("{} arguments needed.", min)}
-        };
-        let _ = msg.channel_id.say(&ctx.http, ret).await;
-    },
-    _ => {
-        error!("Dispatch error: {:?}", error);
+        DispatchError::Ratelimited(seconds) => {
+            let _ = msg
+                .channel_id
+                .say(
+                    &ctx.http,
+                    &format!("Try this again in {} seconds.", seconds),
+                )
+                .await;
+        }
+        DispatchError::NotEnoughArguments { min, given } => {
+            let ret = {
+                if given > 1 {
+                    format!("{} arguments needed, while {} were provided.", min, given)
+                } else if given == 1 {
+                    format!("{} arguments needed while {} was provided.", min, given)
+                } else {
+                    format!("{} arguments needed.", min)
+                }
+            };
+            let _ = msg.channel_id.say(&ctx.http, ret).await;
+        }
+        _ => {
+            error!("Dispatch error: {:?}", error);
+        }
     }
-
-}
-
 }
 
 // this function should return a prefix as a string
@@ -339,7 +340,6 @@ async fn main() {
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
         let pool = get_pool().await.unwrap();
         data.insert::<ConnectionPool>(pool.clone());
-
     }
 
     if let Err(why) = client.start_autosharded().await {
