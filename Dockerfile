@@ -3,7 +3,7 @@ ARG project_name=maki
 # Fill in name of crate^ here
 
 # Set up rust build environment
-FROM clux/muslrust:stable AS build
+FROM rust AS build
 ARG project_name
 
 # Create layer for the dependencies, so we don't have to rebuild them later
@@ -19,7 +19,7 @@ COPY graphql ./graphql
 RUN touch ./src/main.rs && cargo build --release --target x86_64-unknown-linux-musl
 
 # Create a minimal docker file with only the resulting binary
-FROM alpine
+FROM debian:stable-slim
 
 ARG project_name
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
