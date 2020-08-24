@@ -33,10 +33,10 @@ async fn pokemon_pokedex(ctx: &Context, msg: &Message, args: Args) -> CommandRes
     let client = reqwest::Client::new();
 
     let res = client
-        .post("https://favware.tech/api")
+        .post("https://graphqlpokemon.favware.tech")
         .json(&q)
         .send()
-        .await?; // sends gql query
+        .await.unwrap(); // sends gql query
 
     let response_body: Response<my_query::ResponseData> = res.json().await?;
 

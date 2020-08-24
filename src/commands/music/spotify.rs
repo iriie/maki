@@ -1,4 +1,4 @@
-use aspotify::{model::ItemType, CCFlow, ClientCredentials};
+use aspotify::{ItemType, Client, ClientCredentials};
 use serenity::framework::standard::macros::command;
 use serenity::framework::standard::{Args, CommandError, CommandResult};
 use serenity::model::prelude::*;
@@ -16,22 +16,18 @@ async fn spotify(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[command("songs")]
 #[aliases(s)]
 async fn spotify_songs(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let flow =
-        CCFlow::new(ClientCredentials::from_env().expect("CLIENT_ID and CLIENT_SECRET not found."));
 
-    let result = aspotify::search(
-        &flow.send().await.unwrap(),
-        args.rest(),
-        &[ItemType::Track],
-        false,
-        1,
-        0,
-        None,
-    )
-    .await
-    .unwrap();
+    let credentials = ClientCredentials::from_env()
+    .expect("CLIENT_ID and CLIENT_SECRET not found.");
 
-    if result.clone().tracks.unwrap().items.len() == 0 {
+// Create a Spotify client.
+let spoticlient = Client::new(credentials);
+
+    let result = spoticlient.search().search(args.rest(), [ItemType::Track].iter().copied(), false, 1, 0, None).await?;
+
+    debug!("{:#?}", result);
+
+    if result.clone().data.tracks.unwrap().items.len() == 0 {
         msg.channel_id
             .say(&ctx.http, "No songs were found that matched the input.")
             .await?;
@@ -42,32 +38,32 @@ async fn spotify_songs(ctx: &Context, msg: &Message, args: Args) -> CommandResul
         .channel_id
         .send_message(&ctx.http, |m| {
             let desc = "by ".to_string()
-                + &result.clone().tracks.unwrap().items[0].artists[0]
+                + &result.clone().data.tracks.unwrap().items[0].artists[0]
                     .name
                     .to_string()
                 + "\non "
-                + &result.clone().tracks.unwrap().items[0]
+                + &result.clone().data.tracks.unwrap().items[0]
                     .album
                     .name
                     .to_string()
                 + "\n[view on Spotify >]("
-                + &result.clone().tracks.unwrap().items[0].external_urls["spotify"].to_string()
+                + &result.clone().data.tracks.unwrap().items[0].external_urls["spotify"].to_string()
                 + ")";
 
             m.embed(|e| {
                 e.author(|a| {
                     a.name(&format!(
                         "{}",
-                        &result.clone().tracks.unwrap().items[0].name
+                        &result.clone().data.tracks.unwrap().items[0].name
                     ))
                     .url(
-                        &result.clone().tracks.unwrap().items[0].external_urls["spotify"]
+                        &result.clone().data.tracks.unwrap().items[0].external_urls["spotify"]
                             .to_string(),
                     )
                 })
                 .color(0xb90000)
                 .description(desc)
-                .thumbnail(&result.clone().tracks.unwrap().items[0].album.images[0].url)
+                .thumbnail(&result.clone().data.tracks.unwrap().items[0].album.images[0].url)
                 .footer(|f| f.text(format!("Data from Spotify Web API")))
             })
         })
@@ -79,65 +75,58 @@ async fn spotify_songs(ctx: &Context, msg: &Message, args: Args) -> CommandResul
 #[command("albums")]
 #[aliases(a)]
 async fn spotify_album(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let flow =
-        CCFlow::new(ClientCredentials::from_env().expect("CLIENT_ID and CLIENT_SECRET not found."));
+    let credentials = ClientCredentials::from_env()
+    .expect("CLIENT_ID and CLIENT_SECRET not found.");
 
-    let result = aspotify::search(
-        &flow.send().await.unwrap(),
-        args.rest(),
-        &[ItemType::Album],
-        false,
-        1,
-        0,
-        None,
-    )
-    .await
-    .unwrap();
+// Create a Spotify client.
+let spoticlient = Client::new(credentials);
 
-    if result.clone().albums.unwrap().items.len() == 0 {
+    let result = spoticlient.search().search(args.rest(), [ItemType::Album].iter().copied(), false, 1, 0, None).await?;
+
+
+    if result.clone().data.albums.unwrap().items.len() == 0 {
         msg.channel_id
             .say(&ctx.http, "No albums were found that matched the input.")
             .await?;
         return Err(CommandError::from("h-No albums were found."));
     }
 
-    let album = aspotify::get_album(
-        &flow.send().await.unwrap(),
-        &result.clone().albums.unwrap().items[0].id,
+    let album = spoticlient.albums().get_album(
+        &result.clone().data.albums.unwrap().items[0].id.as_deref().unwrap(),
         None,
     )
     .await
-    .unwrap();
+    ?;
 
-    dbg!(album.clone().tracks.total);
+    dbg!(album.clone().data.tracks.total);
 
     let _ = msg
         .channel_id
         .send_message(&ctx.http, |m| {
             let desc = "by ".to_string()
-                + &result.clone().albums.unwrap().items[0].artists[0]
+                + &result.clone().data.albums.unwrap().items[0].artists[0]
                     .name
                     .to_string()
                 + "\n"
-                + &album.clone().tracks.total.to_string()
+                + &album.clone().data.tracks.total.to_string()
                 + " tracks\n[view on Spotify >]("
-                + &result.clone().albums.unwrap().items[0].external_urls["spotify"].to_string()
+                + &result.clone().data.albums.unwrap().items[0].external_urls["spotify"].to_string()
                 + ")";
 
             m.embed(|e| {
                 e.author(|a| {
                     a.name(&format!(
                         "{}",
-                        &result.clone().albums.unwrap().items[0].name
+                        &result.clone().data.albums.unwrap().items[0].name
                     ))
                     .url(
-                        &result.clone().albums.unwrap().items[0].external_urls["spotify"]
+                        &result.clone().data.albums.unwrap().items[0].external_urls["spotify"]
                             .to_string(),
                     )
                 })
                 .color(0xb90000)
                 .description(desc)
-                .thumbnail(&result.clone().albums.unwrap().items[0].images[0].url)
+                .thumbnail(&result.clone().data.albums.unwrap().items[0].images[0].url)
                 .footer(|f| f.text(format!("Data from Spotify Web API")))
             })
         })

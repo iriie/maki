@@ -8,14 +8,14 @@ use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils::{content_safe, ContentSafeOptions};
+use std::collections::HashMap;
 use std::env;
 
 const GEOCODE_API_URL: &str =
     "http://dev.virtualearth.net/REST/v1/Locations/{SEARCH}?output=json&key={BING_MAPS_KEY}";
 const DARK_SKY_API_URL: &str =
     "https://api.darksky.net/forecast/{DARK_SKY_KEY}/{LAT},{LONG}?exclude=daily,minutely,flags&units=us";
-const TRANSLATE_API_URL: &str =
-    "https://translate.yandex.net/api/v1.5/tr.json/translate?key={TRANSLATE_KEY}&text={TEXT}&lang={LANGUAGE}";
+//"https://translate.yandex.net/api/v1.5/tr.json/translate?key={TRANSLATE_KEY}&text={TEXT}&lang={LANGUAGE}";
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "camelCase")]
@@ -82,18 +82,55 @@ struct DSMainStruct {
     ozone: f32,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-struct YandexMainStruct {
-    code: f32,
-    lang: String,
-    text: Vec<String>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Identify {
+    languages: Vec<Language>,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Language {
+    language: String,
+    confidence: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Translation {
+    translations: Vec<TranslationElement>,
+    word_count: i64,
+    character_count: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TranslationElement {
+    translation: String,
+}
+
 
 async fn get_data(url: String) -> Result<Value, CommandError> {
     let client = reqwest::Client::new();
 
     let resp = client.get(&url).send().await?.json().await?;
+
+    Ok(resp)
+}
+
+async fn post_data_with_apikey(
+    url: String,
+    apikey: String,
+    body: String,
+) -> Result<Value, CommandError> {
+    let client = reqwest::Client::new();
+
+    let resp = client
+        .post(&url)
+        .body(body)
+        .basic_auth("apikey", Some(apikey))
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    dbg!(&resp);
 
     Ok(resp)
 }
@@ -107,23 +144,52 @@ async fn translate(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
         )));
     }
     dotenv().ok();
+
+    let mut translate_to = args.single::<String>().unwrap().replace("no", "nb");
+    let to_translate: String = args.rest().to_string();
     let translate_key =
         env::var("TRANSLATE_KEY").expect("Expected TRANSLATE_KEY to be set in environment");
-    let translate_url: &str = &TRANSLATE_API_URL
-        .replace("{LANGUAGE}", &args.single::<String>().unwrap())
-        .replace("{TEXT}", args.rest())
-        .replace("{TRANSLATE_KEY}", &translate_key)
-        .to_string();
+    let translate_api_url =
+        env::var("TRANSLATE_API_URL").expect("Expected TRANSLATE_API_URL to be set in environment");
 
-    let data = get_data(translate_url.to_string()).await?;
+    if !translate_to.contains("-") {
+        let identify = post_data_with_apikey(
+            translate_api_url.clone() + "/v3/identify?version=2018-05-01",
+            translate_key.clone(),
+            to_translate.clone(),
+        )
+        .await?;
 
-    let _message = if let Some(message) = data.pointer("/message").and_then(|x| x.as_str()) {
+        let identify_des: Identify = serde_json::from_value(identify)?;
+        translate_to = format!("{}-{}", identify_des.languages[0].language, translate_to);
+    }
+
+    let mut map = HashMap::new();
+    map.insert("text", to_translate);
+    map.insert("model_id", translate_to.to_string());
+
+    let client = reqwest::Client::new();
+
+    let data: Value = client
+        .post(&(translate_api_url + "/v3/translate?version=2018-05-01"))
+        .json(&map)
+        .basic_auth("apikey", Some(translate_key))
+        .send()
+        .await?
+        .json()
+        .await?;
+
+        dbg!(&data);
+
+    let _message = if let Some(message) = data.pointer("/error").and_then(|x| x.as_str()) {
         return Err(CommandError::from(message));
     };
 
-    let tr_des: YandexMainStruct = serde_json::from_value(data.clone()).unwrap();
+    let tr_des: Translation = serde_json::from_value(data.clone())?;
 
-    let langs = tr_des.lang.split("-");
+    translate_to = translate_to.replace("nb", "no");
+
+    let langs = translate_to.split("-");
     let mut lang_array: Vec<&str> = [""].to_vec();
     for l in langs {
         lang_array.push(l)
@@ -138,7 +204,7 @@ async fn translate(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
                         "Translate (from {} to {})",
                         lang_array[1], lang_array[2]
                     ))
-                    .description(&format!("{}", tr_des.text.join(" ")))
+                    .description(&format!("{}", tr_des.translations[0].translation))
             })
         })
         .await;

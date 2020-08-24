@@ -39,7 +39,7 @@ use commands::moderator::*;
 use commands::music::lastfm::*;
 use commands::music::spotify::*;
 
-use utils::db::get_pool;
+//use utils::db::get_pool;
 
 // This imports `typemap`'s `Key` as `TypeMapKey`.
 use serenity::prelude::*;
@@ -168,15 +168,14 @@ async fn after(ctx: &Context, msg: &Message, command_name: &str, command_result:
 }
 
 #[hook]
-async fn unknown_command(_ctx: &Context, _msg: &Message, _unknown_command_name: &str) {
+async fn unknown_command(_ctx: &Context, _msg: &Message, unknown_command_name: &str) {
     // do nothing, we don't want to annoy people !!!
-    //info!("Could not find command named '{}'", unknown_command_name);
+    debug!("Could not find command named '{}'", unknown_command_name);
 }
 
 #[hook]
-async fn normal_message(_ctx: &Context, _msg: &Message) {
-    // why would anyone enable this, unless they're logging every message???
-    // info!("Message is not a command '{}'", msg.content);
+async fn normal_message(_ctx: &Context, msg: &Message) {
+    debug!("Message is not a command '{}'", msg.content);
 }
 
 #[hook]
@@ -339,8 +338,8 @@ async fn main() {
         let mut data = client.data.write().await;
         data.insert::<keys::Uptime>(HashMap::default());
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
-        let pool = get_pool().await.unwrap();
-        data.insert::<ConnectionPool>(pool.clone());
+        //let pool = get_pool().await.unwrap();  (we don't need database rn)
+        //data.insert::<ConnectionPool>(pool.clone());
     }
 
     if let Err(why) = client.start_autosharded().await {

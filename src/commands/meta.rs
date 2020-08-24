@@ -212,12 +212,11 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
     let cpu_2 = process.cpu_usage().await.unwrap();
 
     let git_stdout;
-    git_stdout = Command::new("sh")
+    git_stdout = Command::new("bash")
         .arg("-c")
         .arg("git log -1 | grep ^commit | awk '{print $2}'")
         .output()
-        .await
-        .expect("failed to execute process");
+        .await?;
 
     let mut git_commit: String = "".to_string();
 
@@ -273,7 +272,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                 e.color(0x3498db)
                     .title(&format!("maki v{} {}", bot_version, git_commit,))
                     .url("https://maki.iscute.dev")
-                    .thumbnail(&format!("{}", cache.user.avatar_url().unwrap()))
+                    .thumbnail(&format!("{}", cache.user.avatar_url().unwrap_or("https://cdn.discordapp.com/embed/avatars/0.png".to_string())))
                     .field("Author", &owner_tag, false)
                     .field("Guilds", &guilds_count.to_string(), true)
                     .field("Channels", &channels_count.to_string(), true)
