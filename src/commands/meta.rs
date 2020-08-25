@@ -212,11 +212,11 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
     let cpu_2 = process.cpu_usage().await.unwrap();
 
     let git_stdout;
-    git_stdout = Command::new("bash")
+    git_stdout = Command::new("sh")
         .arg("-c")
         .arg("git log -1 | grep ^commit | awk '{print $2}'")
         .output()
-        .await?;
+        .await.unwrap();
 
     let mut git_commit: String = "".to_string();
 
@@ -224,7 +224,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
         git_commit.push('#');
         git_commit.push_str(std::str::from_utf8(&git_stdout.stdout).unwrap());
     } else {
-        git_commit.push_str("stable")
+        git_commit.push_str("prod")
     }
     git_commit.truncate(7);
 
