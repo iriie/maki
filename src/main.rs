@@ -80,9 +80,14 @@ impl EventHandler for Handler {
 }
 
 #[group]
-#[commands(activity, nickname, quit, prune)]
-#[description = "admin/server/bot management stuff."]
+#[commands(activity, nickname, quit)]
+#[description = "admin/bot management stuff."]
 struct Admin;
+
+#[group]
+#[commands(prune, kick, ban)]
+#[description = "server management stuff."]
+struct Moderation;
 
 #[group]
 #[commands(translate, weather, invite, ping, stats, say)]
@@ -150,7 +155,7 @@ async fn after(ctx: &Context, msg: &Message, command_name: &str, command_result:
                         &ctx.http,
                         &format!(
                             "Something went wrong!\nerror: `{}` | id: `{}`",
-                            why.0, error_code
+                            why.0.replace("h-", ""), error_code
                         ),
                     )
                     .await;
@@ -317,6 +322,7 @@ async fn main() {
         // They're made in the pattern: `#name_GROUP` for the group instance and `#name_GROUP_OPTIONS`.
         // #name is turned all uppercase
         .group(&ADMIN_GROUP)
+        .group(&MODERATION_GROUP)
         .group(&GENERAL_GROUP)
         .group(&FUN_GROUP)
         .group(&MUSIC_GROUP);
