@@ -91,3 +91,12 @@ jobs:
           asset_path: ./maki.tar.gz
           asset_name: maki.tar.gz
           asset_content_type: application/gzip
+
+      - name: Build/Upload Docker container
+        id: build-docker-container
+        uses: whoan/docker-build-with-cache-action@v5
+        with:
+          username: notkanbaru
+          password: "${{ secrets.GITHUB_TOKEN }}"  # you don't need to manually set this secret. GitHub does it on your behalf
+          registry: docker.pkg.github.com
+          image_name: maki

@@ -39,7 +39,7 @@ use commands::moderator::*;
 use commands::music::lastfm::*;
 use commands::music::spotify::*;
 
-//use utils::db::get_pool;
+use utils::db::get_pool;
 
 // This imports `typemap`'s `Key` as `TypeMapKey`.
 use serenity::prelude::*;
@@ -134,7 +134,7 @@ fn rand_str(length: u32) -> String {
 
 #[hook]
 async fn before(_ctx: &Context, msg: &Message, command_name: &str) -> bool {
-    info!(
+    debug!(
         "Got command '{}' by user '{}'",
         command_name, msg.author.name
     );
@@ -145,7 +145,7 @@ async fn before(_ctx: &Context, msg: &Message, command_name: &str) -> bool {
 #[hook]
 async fn after(ctx: &Context, msg: &Message, command_name: &str, command_result: CommandResult) {
     match command_result {
-        Ok(()) => info!("Processed command '{}'", command_name),
+        Ok(()) => debug!("Processed command '{}'", command_name),
         Err(why) => {
             let error_code = rand_str(7).replace("`", ",");
             if !why.0.starts_with("h-") {
@@ -344,8 +344,8 @@ async fn main() {
         let mut data = client.data.write().await;
         data.insert::<keys::Uptime>(HashMap::default());
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
-        //let pool = get_pool().await.unwrap();  (we don't need database rn)
-        //data.insert::<ConnectionPool>(pool.clone());
+        let pool = get_pool().await.unwrap();
+        data.insert::<ConnectionPool>(pool.clone());
     }
 
     if let Err(why) = client.start_autosharded().await {

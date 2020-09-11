@@ -15,7 +15,6 @@ const GEOCODE_API_URL: &str =
     "http://dev.virtualearth.net/REST/v1/Locations/{SEARCH}?output=json&key={BING_MAPS_KEY}";
 const DARK_SKY_API_URL: &str =
     "https://api.darksky.net/forecast/{DARK_SKY_KEY}/{LAT},{LONG}?exclude=daily,minutely,flags&units=us";
-//"https://translate.yandex.net/api/v1.5/tr.json/translate?key={TRANSLATE_KEY}&text={TEXT}&lang={LANGUAGE}";
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type", rename_all = "camelCase")]

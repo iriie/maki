@@ -5,6 +5,8 @@ use serenity::model::prelude::*;
 use serenity::prelude::*;
 
 use crate::utils::html::clean_url;
+use crate::keys::ConnectionPool;
+use sqlx;
 use chrono::naive::NaiveDateTime;
 use chrono::Utc;
 use serde_json::Value;
@@ -310,13 +312,20 @@ async fn recent_tracks(ctx: &Context, msg: &Message, data: &Value) {
 }
 
 async fn save_lastfm_username(ctx: &Context, msg: &Message, user: u64, args: &Args) {
+    // read from data lock
+    let data = ctx.data.read().await;
+    // get our db pool from the data lock
+    let pool = data.get::<ConnectionPool>().unwrap();
+
+    let username = args.rest();
     let tosay = "".to_string()
         + &msg.author.tag()
         + "("
         + &user.to_string()
         + ")"
         + "'s last.fm username will be saved as "
-        + args.rest();
+        + username;
+    //let data = sqlx::query("UPDATE fm_username ");
     let _ = msg.channel_id.say(&ctx.http, tosay);
 }
 
@@ -326,7 +335,7 @@ async fn get_lastfm_data(
     username: &str,
     period: &str,
 ) -> Result<Value, CommandError> {
-    let fm_key = &env::var("LASTFM_KEY").expect("Expected a discord token in the environment.");
+    let fm_key = &env::var("LASTFM_KEY").expect("Expected a last.fm key in the environment.");
     let url = url
         .replace("{USER}", &username)
         .replace("{KEY}", &fm_key)

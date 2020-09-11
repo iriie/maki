@@ -1,4 +1,4 @@
-use aspotify::{ItemType, Client, ClientCredentials};
+use aspotify::{Client, ClientCredentials, ItemType};
 use serenity::framework::standard::macros::command;
 use serenity::framework::standard::{Args, CommandError, CommandResult};
 use serenity::model::prelude::*;
@@ -16,14 +16,23 @@ async fn spotify(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[command("songs")]
 #[aliases(s)]
 async fn spotify_songs(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let credentials =
+        ClientCredentials::from_env().expect("CLIENT_ID and CLIENT_SECRET not found.");
 
-    let credentials = ClientCredentials::from_env()
-    .expect("CLIENT_ID and CLIENT_SECRET not found.");
+    // Create a Spotify client.
+    let spoticlient = Client::new(credentials);
 
-// Create a Spotify client.
-let spoticlient = Client::new(credentials);
-
-    let result = spoticlient.search().search(args.rest(), [ItemType::Track].iter().copied(), false, 1, 0, None).await?;
+    let result = spoticlient
+        .search()
+        .search(
+            args.rest(),
+            [ItemType::Track].iter().copied(),
+            false,
+            1,
+            0,
+            None,
+        )
+        .await?;
 
     debug!("{:#?}", result);
 
@@ -47,7 +56,8 @@ let spoticlient = Client::new(credentials);
                     .name
                     .to_string()
                 + "\n[view on Spotify >]("
-                + &result.clone().data.tracks.unwrap().items[0].external_urls["spotify"].to_string()
+                + &result.clone().data.tracks.unwrap().items[0].external_urls["spotify"]
+                    .to_string()
                 + ")";
 
             m.embed(|e| {
@@ -75,14 +85,23 @@ let spoticlient = Client::new(credentials);
 #[command("albums")]
 #[aliases(a)]
 async fn spotify_album(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let credentials = ClientCredentials::from_env()
-    .expect("CLIENT_ID and CLIENT_SECRET not found.");
+    let credentials =
+        ClientCredentials::from_env().expect("CLIENT_ID and CLIENT_SECRET not found.");
 
-// Create a Spotify client.
-let spoticlient = Client::new(credentials);
+    // Create a Spotify client.
+    let spoticlient = Client::new(credentials);
 
-    let result = spoticlient.search().search(args.rest(), [ItemType::Album].iter().copied(), false, 1, 0, None).await?;
-
+    let result = spoticlient
+        .search()
+        .search(
+            args.rest(),
+            [ItemType::Album].iter().copied(),
+            false,
+            1,
+            0,
+            None,
+        )
+        .await?;
 
     if result.clone().data.albums.unwrap().items.len() == 0 {
         msg.channel_id
@@ -91,12 +110,16 @@ let spoticlient = Client::new(credentials);
         return Err(CommandError::from("h-No albums were found."));
     }
 
-    let album = spoticlient.albums().get_album(
-        &result.clone().data.albums.unwrap().items[0].id.as_deref().unwrap(),
-        None,
-    )
-    .await
-    ?;
+    let album = spoticlient
+        .albums()
+        .get_album(
+            &result.clone().data.albums.unwrap().items[0]
+                .id
+                .as_deref()
+                .unwrap(),
+            None,
+        )
+        .await?;
 
     dbg!(album.clone().data.tracks.total);
 
@@ -110,7 +133,8 @@ let spoticlient = Client::new(credentials);
                 + "\n"
                 + &album.clone().data.tracks.total.to_string()
                 + " tracks\n[view on Spotify >]("
-                + &result.clone().data.albums.unwrap().items[0].external_urls["spotify"].to_string()
+                + &result.clone().data.albums.unwrap().items[0].external_urls["spotify"]
+                    .to_string()
                 + ")";
 
             m.embed(|e| {
