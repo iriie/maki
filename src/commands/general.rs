@@ -1,4 +1,5 @@
 use dotenv::dotenv;
+use rand::random;
 use serde;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -100,10 +101,21 @@ pub struct Translation {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct ShortenerResult {
+    ts: i64,
+    data: Data,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Data {
+    key: String,
+    value: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TranslationElement {
     translation: String,
 }
-
 
 async fn get_data(url: String) -> Result<Value, CommandError> {
     let client = reqwest::Client::new();
@@ -132,6 +144,12 @@ async fn post_data_with_apikey(
     dbg!(&resp);
 
     Ok(resp)
+}
+
+fn rand_str(length: u32) -> String {
+    (0..length)
+        .map(|_| (0x0061 + (random::<f32>() * 26.0) as u8) as char)
+        .collect()
 }
 
 #[command]
@@ -178,7 +196,7 @@ async fn translate(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
         .json()
         .await?;
 
-        dbg!(&data);
+    dbg!(&data);
 
     let _message = if let Some(message) = data.pointer("/error").and_then(|x| x.as_str()) {
         return Err(CommandError::from(message));
@@ -204,6 +222,55 @@ async fn translate(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
                         lang_array[1], lang_array[2]
                     ))
                     .description(&format!("{}", tr_des.translations[0].translation))
+            })
+        })
+        .await;
+    Ok(())
+}
+
+#[command]
+#[owners_only]
+#[aliases(link, li, redir, r)]
+async fn shorten(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let mut key = args.single::<String>()?;
+    let value: String = args.rest().to_string();
+
+    if key == "random".to_string() {
+        key = rand_str(5).to_string();
+    }
+
+    let url = "https://r.izu.moe/create?key={KEY}&url={VALUE}&auth={AUTH}";
+
+    let short_url = url
+        .replace("{KEY}", &key)
+        .replace("{VALUE}", &value)
+        .replace(
+            "{AUTH}",
+            &env::var("REDIR_KEY").expect("Expected REDIR_KEY to be set in environment"),
+        )
+        .to_string();
+    let data = get_data(short_url.to_string()).await?;
+    let short_url_des: ShortenerResult = serde_json::from_value(data.clone()).unwrap();
+
+    let _ = msg
+        .channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|e| {
+                e.color(0x3498db)
+                    .title("Link shortener - Result")
+                    .description(&format!(
+                        "[r.izu.moe/{}](https://r.izu.moe/{})
+                        ```json
+data: {{
+  key: \"{}\"
+  value: \"{}\"
+}}```",
+                        short_url_des.data.key,
+                        short_url_des.data.key,
+                        short_url_des.data.key,
+                        short_url_des.data.value
+                    ))
+                    .footer(|f| f.text(format!("Document ID: {}", short_url_des.ts)))
             })
         })
         .await;

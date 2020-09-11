@@ -80,7 +80,7 @@ impl EventHandler for Handler {
 }
 
 #[group]
-#[commands(activity, nickname, quit)]
+#[commands(activity, nickname, quit, shorten)]
 #[description = "admin/bot management stuff."]
 struct Admin;
 
