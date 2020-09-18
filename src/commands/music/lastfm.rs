@@ -4,17 +4,34 @@ use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 
-use crate::utils::html::clean_url;
-use crate::keys::ConnectionPool;
-use sqlx;
-use chrono::naive::NaiveDateTime;
-use chrono::Utc;
+use serde;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::keys::ConnectionPool;
+use crate::utils::html::clean_url;
+use chrono::naive::NaiveDateTime;
+use chrono::Utc;
+use sqlx;
+
 use std::env;
+use std::option::Option;
 
 const FM_RECENT_TRACKS_URL: &str = "http://ws.audioscrobbler.com/2.0/?method=user.getRecentTracks&user={USER}&api_key={KEY}&format=json&limit=10";
 const FM_TOP_TRACKS_URL: &str = "http://ws.audioscrobbler.com/2.0/?method=user.gettoptracks&user={USER}&api_key={KEY}&format=json&limit=10&period={PERIOD}";
+
+#[derive(Deserialize, Serialize, Debug)]
+struct User {
+    id: i64,
+    pronouns: Option<String>,
+    lastfm: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+struct UpdateLastFM {
+    id: i64,
+    lastfm: Option<String>,
+}
 
 #[command]
 #[aliases(fm)]
@@ -23,7 +40,7 @@ const FM_TOP_TRACKS_URL: &str = "http://ws.audioscrobbler.com/2.0/?method=user.g
 )]
 #[sub_commands(LASTFM_LATEST, LASTFM_TOPSONGS, LASTFM_LATESTSONGS, LASTFM_SAVE)]
 async fn lastfm(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let data = get_lastfm_data(ctx, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
+    let data = get_lastfm_data(ctx, msg, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
     recent_track(ctx, msg, &data, false).await?;
 
     Ok(())
@@ -31,13 +48,13 @@ async fn lastfm(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[command("save")]
 #[aliases(update)]
 async fn lastfm_save(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    save_lastfm_username(ctx, msg, msg.author.id.0, &args).await;
+    let _ = save_lastfm_username(ctx, msg, &args).await;
 
     Ok(())
 }
 #[command("latest")]
 async fn lastfm_latest(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let data = get_lastfm_data(ctx, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
+    let data = get_lastfm_data(ctx, msg, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
     recent_track(ctx, msg, &data, false).await?;
 
     Ok(())
@@ -45,7 +62,7 @@ async fn lastfm_latest(ctx: &Context, msg: &Message, args: Args) -> CommandResul
 
 #[command("topsongs")]
 async fn lastfm_topsongs(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let data = get_lastfm_data(ctx, FM_TOP_TRACKS_URL, args.rest(), "0").await?;
+    let data = get_lastfm_data(ctx, msg, FM_TOP_TRACKS_URL, args.rest(), "0").await?;
 
     top_tracks(ctx, msg, &data, "0").await;
 
@@ -54,7 +71,7 @@ async fn lastfm_topsongs(ctx: &Context, msg: &Message, args: Args) -> CommandRes
 #[command("latestsongs")]
 #[aliases(songs)]
 async fn lastfm_latestsongs(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let data = get_lastfm_data(ctx, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
+    let data = get_lastfm_data(ctx, msg, FM_RECENT_TRACKS_URL, args.rest(), "0").await?;
 
     recent_tracks(ctx, msg, &data).await;
 
@@ -311,33 +328,112 @@ async fn recent_tracks(ctx: &Context, msg: &Message, data: &Value) {
     send_last_fm_embed(ctx, msg, None, &title, username, &s, first_image).await;
 }
 
-async fn save_lastfm_username(ctx: &Context, msg: &Message, user: u64, args: &Args) {
+async fn save_lastfm_username(
+    ctx: &Context,
+    msg: &Message,
+    args: &Args,
+) -> CommandResult {
     // read from data lock
     let data = ctx.data.read().await;
     // get our db pool from the data lock
+
     let pool = data.get::<ConnectionPool>().unwrap();
 
     let username = args.rest();
+
+    let update_fm = sqlx::query_as!(
+        UpdateLastFM,
+        "
+            update users 
+            set lastfm = $1
+            where id = $2
+
+            returning id, lastfm
+            ",
+        username,
+        msg.author.id.0 as i64
+    )
+    .fetch_all(pool)
+    .await?;
+
+    if update_fm.is_empty() {
+        let _ = msg
+            .channel_id
+            .say(&ctx.http, "creating a Maki user account...")
+            .await;
+        let update_fm = sqlx::query_as!(
+            UpdateLastFM,
+            "
+            insert into users(id, lastfm)
+            values($1, $2)
+
+            returning id, lastfm
+            ",
+            msg.author.id.0 as i64,
+            username
+        )
+        .fetch_all(pool)
+        .await?;
+        let _ = msg
+            .channel_id
+            .say(&ctx.http, format!("{:?}", update_fm))
+            .await;
+    } else {
+        let _ = msg
+            .channel_id
+            .say(&ctx.http, format!("{:?}", update_fm))
+            .await;
+    }
+
     let tosay = "".to_string()
         + &msg.author.tag()
-        + "("
-        + &user.to_string()
+        + " ("
+        + &msg.author.id.to_string()
         + ")"
-        + "'s last.fm username will be saved as "
+        + "'s last.fm username is saved as "
         + username;
-    //let data = sqlx::query("UPDATE fm_username ");
-    let _ = msg.channel_id.say(&ctx.http, tosay);
+
+    let _ = msg.channel_id.say(&ctx.http, tosay).await;
+    Ok(())
 }
 
 async fn get_lastfm_data(
-    _ctx: &Context,
+    ctx: &Context,
+    msg: &Message,
     url: &str,
     username: &str,
     period: &str,
 ) -> Result<Value, CommandError> {
+    dbg!(username);
+    let fm_username: String;
+    if username == "" {
+        // read from data lock
+        let data = ctx.data.read().await;
+        // get our db pool from the data lock
+
+        let pool = data.get::<ConnectionPool>().unwrap();
+
+        let get_fm = sqlx::query_as!(
+            UpdateLastFM,
+            "
+            select id, lastfm
+            from users
+            where id = $1
+            limit 1
+            ",
+            msg.author.id.0 as i64
+        )
+        .fetch_all(pool)
+        .await?;
+        let fm = &get_fm[0].lastfm;
+        fm_username = fm.clone().unwrap();
+    }else{
+        fm_username = username.to_string();
+    }
+
     let fm_key = &env::var("LASTFM_KEY").expect("Expected a last.fm key in the environment.");
     let url = url
-        .replace("{USER}", &username)
+        .replace("{USER}", &fm_username)
         .replace("{KEY}", &fm_key)
         .replace("{PERIOD}", period);
     // fetch data

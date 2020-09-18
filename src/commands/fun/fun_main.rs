@@ -10,7 +10,7 @@ use serenity::prelude::*;
 use crate::utils::html::clean_url;
 
 const URBANDICTIONARY_API_URL: &str = "https://api.urbandictionary.com/v0/define?term={TERM}";
-const RANDOM_PIKACHU_API_URL: &str = "https://some-random-api.ml/pikachuimg";
+const RANDOM_PIKACHU_API_URL: &str = "https://uwucollective.cf/api/pika";
 
 #[derive(Deserialize, Serialize, Debug)]
 struct Definition {
@@ -29,6 +29,11 @@ struct UrbanResponse {
     #[serde(rename = "list")]
     pub definitions: Vec<Definition>,
     pub tags: Option<Vec<String>>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+struct Image {
+    pub image: String,
 }
 
 #[command]
@@ -83,13 +88,12 @@ async fn urbandictionary(ctx: &Context, msg: &Message, args: Args) -> CommandRes
 #[aliases(pika)]
 async fn pikachu(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let data = get_data(&ctx, RANDOM_PIKACHU_API_URL, args.rest()).await?;
-    let img = data
-        .pointer("/link") //where we get the data (in js would be list[0].link)
-        .and_then(|x| x.as_str()) //convert to string
-        .unwrap_or("N/A"); //if not available, set var as "N/A"
+
+    let deserialized: Image = serde_json::from_value(data.clone()).unwrap();
+
     let _ = msg.channel_id.send_message(&ctx.http, |m| {
-        m.embed(|e| e.color(0x3498db).title("pika!").image(img))
-    });
+        m.embed(|e| e.color(0x3498db).title("pika!").image(deserialized.image))
+    }).await?;
     Ok(())
 }
 

@@ -233,9 +233,14 @@ async fn translate(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 #[aliases(link, li, redir, r)]
 async fn shorten(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let mut key = args.single::<String>()?;
-    let value: String = args.rest().to_string();
+    let mut value: String = args.rest().to_string();
 
     if key == "random".to_string() {
+        key = rand_str(5).to_string();
+    }
+
+    if key.starts_with("http") {
+        value = key;
         key = rand_str(5).to_string();
     }
 

@@ -1,3 +1,11 @@
+extern crate chrono;
+use chrono::prelude::*;
+
+use chrono::Duration;
+use chrono_humanize::HumanTime;
+
+use two_timer::parse;
+
 use serenity::framework::standard::macros::command;
 use serenity::{
     framework::standard::{Args, CommandError, CommandResult},
@@ -5,30 +13,7 @@ use serenity::{
     prelude::*,
     Error,
 };
-use regex::Regex;
-
-//stolen from https://gitlab.com/nitsuga5124/robo-arc/-/blob/master/src/commands/moderation.rs
-pub async fn get_members(ctx: &Context, msg: &Message, member: String) -> Result<Member, String> {
-    if let Ok(id) = member.parse::<u64>(){
-        // gets a member from user id
-        let member = &msg.guild_id.unwrap().member(ctx, id).await;
-        match member {
-            Ok(m) => Ok(m.to_owned()),
-            Err(why) => Err(why.to_string()),
-        }
-    } else if member.starts_with("<@") && member.ends_with(">"){
-        let re = Regex::new("[<@!>]").unwrap();
-        let member_id = re.replace_all(&member, "").into_owned();
-        let member = &msg.guild_id.unwrap().member(ctx, UserId(member_id.parse::<u64>().unwrap())).await;
-        match member {
-            Ok(m) => Ok(m.to_owned()),
-            Err(why) => Err(why.to_string()),
-        }
-
-    } else {
-        Err("No members found.".to_string())
-    }
-}
+use crate::utils::user::get_members;
 
 #[command]
 #[required_permissions(MANAGE_MESSAGES)]
@@ -102,7 +87,7 @@ async fn ban(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
 #[command]
 #[required_permissions(KICK_MEMBERS)]
-#[description("Bans people. (limit one at a time)")]
+#[description("Kicks people. (limit one at a time)")]
 async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let to_parse = args.single_quoted::<String>()?;
     let member = get_members(ctx, msg,to_parse).await;
@@ -126,4 +111,39 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     Ok(())
 }
 
+#[command]
+#[description("[WIP] Mute people. (limit one at a time)\n If a value cannot be parsed, defaults to 1 hour.")]
+async fn mute(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+
+    let to_parse = args.single_quoted::<String>()?;
+    let member = get_members(ctx, msg,to_parse).await;
+
+    let time_input = args.remains().unwrap_or("1hr").replace("until ", "");
+    
+    let time_raw = match parse(&time_input, None) {
+        Ok((_d1, d2, _)) => Duration::seconds(d2.timestamp() - (Utc::now().timestamp_millis() / 1000)),
+        Err(_) => {
+            Duration::from_std(humantime::parse_duration(&time_input).unwrap_or(std::time::Duration::from_secs(3600))).unwrap_or(Duration::hours(1))},
+    };
+
+    if time_raw.num_minutes().is_negative() {
+        error!("A negative number was parsed.")
+    }
+
+    let ht = Some(HumanTime::from(time_raw).to_string());
+
+    match member {
+        Ok(m) => {
+            if let Some(ht) = ht{
+                msg.channel_id.say(ctx, format!("muted `{}`. they will be unmuted `{}`", m.user.tag(), ht)).await?;
+            }
+            else{
+                msg.channel_id.say(ctx, format!("kicked `{}`, no reason given.", m.user.tag())).await?;
+            }
+        },
+        Err(why) => {return Err(CommandError::from(why.to_string()))}
+    }
+
+    Ok(())
+}
 

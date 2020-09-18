@@ -85,7 +85,7 @@ impl EventHandler for Handler {
 struct Admin;
 
 #[group]
-#[commands(prune, kick, ban)]
+#[commands(prune, kick, ban, mute)]
 #[description = "server management stuff."]
 struct Moderation;
 
@@ -106,24 +106,23 @@ struct Music;
 
 #[help]
 #[individual_command_tip = "for more info about a command or group, pass the name as a subcommand."]
-#[embed_error_colour(red)]
-#[embed_success_colour(fooyoo)]
-#[lacking_ownership(hide)]
-#[lacking_permissions(hide)]
-#[lacking_role(hide)]
+#[lacking_ownership = "Hide"]
+#[lacking_permissions = "Hide"]
+#[lacking_role = "Hide"]
 #[max_levenshtein_distance(2)]
-#[strikethrough_commands_tip_in_dm(false)]
-#[strikethrough_commands_tip_in_guild(false)]
-
-async fn help(
+#[strikethrough_commands_tip_in_dm = "you cannot run ~~strikethroughed commands~~."]
+#[strikethrough_commands_tip_in_guild = ""]
+async fn my_help(
     ctx: &Context,
     msg: &Message,
     args: Args,
-    options: &'static HelpOptions,
+    help_options: &'static HelpOptions,
     groups: &[&'static CommandGroup],
     owners: HashSet<UserId>,
 ) -> CommandResult {
-    help_commands::with_embeds(ctx, msg, args, options, groups, owners).await
+    let ho = help_options.clone();
+    let _ = help_commands::with_embeds(ctx, msg, args, &ho, groups, owners).await;
+    Ok(())
 }
 
 fn rand_str(length: u32) -> String {
@@ -143,32 +142,44 @@ async fn before(_ctx: &Context, msg: &Message, command_name: &str) -> bool {
 }
 
 #[hook]
-async fn after(ctx: &Context, msg: &Message, command_name: &str, command_result: CommandResult) {
-    match command_result {
-        Ok(()) => debug!("Processed command '{}'", command_name),
-        Err(why) => {
+async fn after(ctx: &Context, msg: &Message, cmd_name: &str, error: CommandResult) {
+    if let Err(why) = &error {
+        error!("Error while running command {}", &cmd_name);
+        error!("{:?}", &error);
+
+        if !&format!("{:?}", &error).starts_with("h-") {
             let error_code = rand_str(7).replace("`", ",");
-            if !why.0.starts_with("h-") {
-                let _ = msg
-                    .channel_id
-                    .say(
-                        &ctx.http,
-                        &format!(
-                            "Something went wrong!\nerror: `{}` | id: `{}`",
-                            why.0.replace("h-", ""), error_code
-                        ),
-                    )
-                    .await;
-            }
-            error!(
-                "Command `{}` triggered by `{}` has errored with code {}: {}",
-                command_name,
-                msg.author.tag(),
-                error_code,
-                why.0
-            );
-            error!("{:#?}", why)
+            let _ = msg
+                .channel_id
+                .say(
+                    &ctx.http,
+                    &format!(
+                        "Something went wrong!\nerror: `{}` | id: `{}`",
+                        format!("{:?}", &error).replace("h-", ""),
+                        error_code
+                    ),
+                )
+                .await;
+        } else {
+            let _ = msg
+                .channel_id
+                .say(
+                    &ctx.http,
+                    &format!(
+                        "Something went wrong!\nerror: `{}`",
+                        format!("{:?}", &error).replace("h-", "")
+                    ),
+                )
+                .await;
         }
+
+        //let err = why.0.to_string();
+        if let Err(_) = msg.channel_id.say(ctx, &why).await {
+            error!(
+                "Unable to send messages on channel id {}",
+                &msg.channel_id.0
+            );
+        };
     }
 }
 
@@ -205,7 +216,7 @@ async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> (
                 .channel_id
                 .say(
                     &ctx.http,
-                    &format!("Try this again in {} seconds.", seconds),
+                    &format!("Try this again in {:?} seconds.", seconds),
                 )
                 .await;
         }
@@ -214,8 +225,11 @@ async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> (
                 if given > 1 {
                     format!("{} arguments needed but {} were provided.", min, given)
                 } else if given == 1 {
-                    format!("{} arguments needed but
-                     {} was provided.", min, given)
+                    format!(
+                        "{} arguments needed but
+                     {} was provided.",
+                        min, given
+                    )
                 } else {
                     format!("{} arguments needed.", min)
                 }
@@ -313,7 +327,7 @@ async fn main() {
         // reason or another. For example, when a user has exceeded a rate-limit or a command
         // can only be performed by the bot owner.
         .on_dispatch_error(dispatch_error)
-        .help(&HELP)
+        .help(&MY_HELP)
         // Can't be used more than once per 5 seconds:
         //.bucket("emoji", |b| b.delay(5))
         // Can't be used more than 2 times per 30 seconds, with a 5 second delay:

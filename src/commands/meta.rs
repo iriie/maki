@@ -34,7 +34,7 @@ impl Timer {
 #[aliases(presence, a)]
 #[description("Edit the bot's presence. Use the `listen`, `play`, or `reset` subcommands to set the respective activity.")]
 #[owners_only]
-#[sub_commands(activity_listen, activity_play, activity_stream, activity_reset)]
+#[sub_commands(activity_listen, activity_play, activity_stream, activity_compete, activity_reset)]
 async fn activity(ctx: &Context, msg: &Message) -> CommandResult {
     // Send error message if no subcommands were matched.
     msg.channel_id.say(&ctx.http, "Invalid activity!").await?;
@@ -80,6 +80,18 @@ async fn activity_stream(ctx: &Context, msg: &Message, args: Args) -> CommandRes
     Ok(())
 }
 
+#[command("compete")]
+async fn activity_compete(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let activity = Activity::competing(args.rest());
+    ctx.set_activity(activity).await;
+
+    msg.channel_id
+        .say(&ctx.http, format!("Now competing in `{:#?}`", args.rest()))
+        .await?;
+
+    Ok(())
+}
+
 #[command("reset")]
 async fn activity_reset(ctx: &Context, msg: &Message) -> CommandResult {
     ctx.reset_presence().await;
@@ -95,7 +107,7 @@ async fn activity_reset(ctx: &Context, msg: &Message) -> CommandResult {
 #[description("Invite the bot to a server.")]
 async fn invite(ctx: &Context, msg: &Message) -> CommandResult {
     // Create invite URL using the bot's user ID.
-    let url = format!("Invite URL: <https://discordapp.com/oauth2/authorize?&client_id={}&scope=bot&permissions=0>", ctx.cache.read().await.user.id);
+    let url = format!("Invite URL: <https://discordapp.com/oauth2/authorize?&client_id={:?}&scope=bot&permissions=0>", ctx.cache.current_user_id().await);
 
     msg.channel_id.say(&ctx.http, url).await?;
 
@@ -194,7 +206,6 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[description("Bot stats")]
 async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
-    let cache = &ctx.cache.read().await;
 
     let bot_version = env!("CARGO_PKG_VERSION");
 
@@ -228,6 +239,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
     }
     git_commit.truncate(7);
 
+
     let (name, discriminator) = match ctx.http.get_current_application_info().await {
         Ok(info) => (info.owner.name, info.owner.discriminator),
         Err(why) => panic!("Could not access application info: {:?}", why),
@@ -235,10 +247,10 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
 
     let owner_tag = name.to_string() + "#" + &discriminator.to_string();
 
-    let guilds_count = &cache.guilds.len();
-    let channels_count = &cache.channels.len();
-    let users_count = cache.users.len();
-    let users_count_unknown = cache.unknown_members().await as usize;
+    let guilds_count = &ctx.cache.guilds().await.len();
+    let channels_count = &ctx.cache.guild_channel_count().await;
+    let users_count = ctx.cache.user_count().await;
+    let users_count_unknown = ctx.cache.unknown_members().await as usize;
 
     let uptime = {
         let data = ctx.data.read().await;
@@ -263,7 +275,9 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
     f.num_items(4);
     f.ago("");
 
-    let shard_plural = if cache.shard_count > 1 { "s" } else { "" };
+    let shard_plural = if ctx.cache.shard_count().await > 1 { "s" } else { "" };
+    let avatar = ctx.cache.current_user().await.avatar_url().unwrap_or("https://cdn.discordapp.com/embed/avatars/0.png".to_string());
+    let shards = ctx.cache.shard_count().await;
 
     let _ = msg
         .channel_id
@@ -272,7 +286,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                 e.color(0x3498db)
                     .title(&format!("maki v{} {}", bot_version, git_commit,))
                     .url("https://maki.iscute.dev")
-                    .thumbnail(&format!("{}", cache.user.avatar_url().unwrap_or("https://cdn.discordapp.com/embed/avatars/0.png".to_string())))
+                    .thumbnail(&format!("{}", avatar))
                     .field("Author", &owner_tag, false)
                     .field("Guilds", &guilds_count.to_string(), true)
                     .field("Channels", &channels_count.to_string(), true)
@@ -288,8 +302,9 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                     .field(
                         "Memory",
                         format!(
-                            "`{} MB used` \n`{} GB total`",
+                            "`{} MB used`\n`({} MB virt)`\n`{} GB total`",
                             &thismem.rss().get::<units::information::megabyte>(),
+                            &thismem.vms().get::<units::information::megabyte>(),
                             &fullmem.get::<units::information::gigabyte>()
                         ),
                         true,
@@ -301,7 +316,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                     )
                     .field(
                         "Shards",
-                        format!("`{} shard{}` ", cache.shard_count, shard_plural),
+                        format!("`{} shard{}` ", shards, shard_plural),
                         true,
                     )
                     .field("Bot Uptime", &uptime, false);
