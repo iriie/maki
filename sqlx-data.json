@@ -1,0 +1,83 @@
+{
+  "db": "PostgreSQL",
+  "25dcd350faed030e200289c777c8f50187e9f026c2a131320f3f5a7d1f2a8bc0": {
+    "query": "\n            select id, lastfm\n            from users\n            where id = $1\n            limit 1\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "lastfm",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "e8c1c4d32aaa1a099c2965d42c08e08c3a048fed4e84abee13bcbba71ce49d38": {
+    "query": "\n            update users \n            set lastfm = $1\n            where id = $2\n\n            returning id, lastfm\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "lastfm",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "f27a72fc44b954f8a66a657b973d640fc0cca7a32535ee6e53a7b7ba7d0d0dc0": {
+    "query": "\n            insert into users(id, lastfm)\n            values($1, $2)\n\n            returning id, lastfm\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "lastfm",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Varchar"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  }
+}
