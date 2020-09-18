@@ -17,6 +17,7 @@ RUN cargo build --release --target x86_64-unknown-linux-musl
 # Build the actual source
 COPY src ./src
 COPY graphql ./graphql
+COPY sqlx-data.json ./sqlx-data.json
 RUN touch ./src/main.rs && cargo build --release --target x86_64-unknown-linux-musl
 RUN ls target/release
 RUN find "$(pwd)"
