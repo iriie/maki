@@ -36,7 +36,7 @@ struct UpdateLastFM {
 #[command]
 #[aliases(fm)]
 #[description(
-    "Gets latest things from last.fm. Defaults to \"latest\".\nSubcommands: `latest`, `topsongs`, `latestsongs`"
+    "Gets things from last.fm. Defaults to \"latest\".\nYou can add your last.fm to the bot by using the `save` subcommand."
 )]
 #[sub_commands(LASTFM_LATEST, LASTFM_TOPSONGS, LASTFM_LATESTSONGS, LASTFM_SAVE)]
 async fn lastfm(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
@@ -46,6 +46,10 @@ async fn lastfm(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     Ok(())
 }
 #[command("save")]
+#[usage("<cool> <stuff>")]
+#[description(
+    "Saves your last.fm username to the database."
+)]
 #[aliases(update)]
 async fn lastfm_save(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let _ = save_lastfm_username(ctx, msg, &args).await;
@@ -406,7 +410,7 @@ async fn get_lastfm_data(
 ) -> Result<Value, CommandError> {
     dbg!(username);
     let fm_username: String;
-    if username == "" {
+    if username == "" || username.starts_with("<@") {
         // read from data lock
         let data = ctx.data.read().await;
         // get our db pool from the data lock

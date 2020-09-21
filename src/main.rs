@@ -38,6 +38,7 @@ use commands::meta::*;
 use commands::moderator::*;
 use commands::music::lastfm::*;
 use commands::music::spotify::*;
+use commands::settings::*;
 
 use utils::db::get_pool;
 
@@ -104,6 +105,11 @@ struct Fun;
 #[description = "search or show your own music."]
 struct Music;
 
+#[group]
+#[commands(server, user)]
+#[description = "settings for different things implemented into the bot"]
+struct Settings;
+
 #[help]
 #[individual_command_tip = "for more info about a command or group, pass the name as a subcommand."]
 #[lacking_ownership = "Hide"]
@@ -147,7 +153,7 @@ async fn after(ctx: &Context, msg: &Message, cmd_name: &str, error: CommandResul
         error!("Error while running command {}", &cmd_name);
         error!("{:?}", &error);
 
-        if !&format!("{:?}", &error).starts_with("h-") {
+        if !&format!("{:?}", why).starts_with("h-") {
             let error_code = rand_str(7).replace("`", ",");
             let _ = msg
                 .channel_id
@@ -155,7 +161,7 @@ async fn after(ctx: &Context, msg: &Message, cmd_name: &str, error: CommandResul
                     &ctx.http,
                     &format!(
                         "Something went wrong!\nerror: `{}` | id: `{}`",
-                        format!("{:?}", &error).replace("h-", ""),
+                        format!("{:?}", why),
                         error_code
                     ),
                 )
@@ -167,19 +173,11 @@ async fn after(ctx: &Context, msg: &Message, cmd_name: &str, error: CommandResul
                     &ctx.http,
                     &format!(
                         "Something went wrong!\nerror: `{}`",
-                        format!("{:?}", &error).replace("h-", "")
+                        format!("{:?}", why).replace("h-", "")
                     ),
                 )
                 .await;
         }
-
-        //let err = why.0.to_string();
-        if let Err(_) = msg.channel_id.say(ctx, &why).await {
-            error!(
-                "Unable to send messages on channel id {}",
-                &msg.channel_id.0
-            );
-        };
     }
 }
 
@@ -196,10 +194,11 @@ async fn normal_message(_ctx: &Context, msg: &Message) {
 
 #[hook]
 async fn prefix_only(ctx: &Context, msg: &Message) {
-    let prefix = ">";
+    let prefix = env::var("PREFIX").expect("Expected a prefix in the environment.");
     if msg.content == "<@!683934524526034994>".to_string()
         || msg.content == "<@683934524526034994>".to_string()
     {
+        let prefix = dynamic_prefix(ctx, msg).await.unwrap_or(prefix);
         let _ = msg
             .channel_id
             .say(&ctx.http, &format!("The prefix is `{}`", prefix))
@@ -244,17 +243,44 @@ async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> (
 
 // this function should return a prefix as a string
 #[hook]
-async fn dynamic_prefix(_ctx: &Context, msg: &Message) -> Option<String> {
+pub async fn dynamic_prefix(ctx: &Context, msg: &Message) -> Option<String> {
     // get the default prefix
     let token = &env::var("PREFIX").expect("Expected a prefix in the environment.");
-    // Make sure we can actually get the guild_id, if not there's
-    // no point to trying to find the prefix. Also means we can use
-    // unwrap for this later on, since we Guard check it's Some() here
-    msg.guild_id?;
+    let is_prod = &env::var("PRODUCTION").expect("Expected a prefix in the environment.");
+
     let p;
+    // if sent from a guild, we check for a prefix in the database
+    // TODO: find some way to cache this
+    if let Some(id) = msg.guild_id{
+        if is_prod != &"true".to_string() {
+            return Some(token.to_string())
+        }
+        // read from data lock
+        let data = ctx.data.read().await;
+        // get our db pool from the data lock
+        let pool = data.get::<ConnectionPool>().unwrap();
 
-    p = token.to_string();
+        let prefix = sqlx::query!(
+            "
+        select id, prefix
+        from guilds
+        where id = $1
+        limit 1
+        ",
+            id.0 as i64
+        )
+        .fetch_optional(pool)
+        .await
+        .expect("Could not query the database");
 
+        p = if let Some(result) = prefix {
+            result.prefix.unwrap_or(".".to_string()).to_string()
+        } else {
+            token.to_string()
+        };
+    } else {
+        p = token.to_string()
+    }
     Some(p)
 }
 
@@ -339,7 +365,8 @@ async fn main() {
         .group(&MODERATION_GROUP)
         .group(&GENERAL_GROUP)
         .group(&FUN_GROUP)
-        .group(&MUSIC_GROUP);
+        .group(&MUSIC_GROUP)
+        .group(&SETTINGS_GROUP);
 
     let mut client = Client::new(&token)
         .event_handler(Handler)
