@@ -112,7 +112,7 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 }
 
 #[command]
-#[description("[WIP] Mute people. (limit one at a time)\n If a value cannot be parsed, defaults to 1 hour.")]
+#[description("[WIP] Mute people. (limit one at a time)")]
 async fn mute(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     let to_parse = args.single_quoted::<String>()?;
@@ -123,14 +123,16 @@ async fn mute(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let time_raw = match parse(&time_input, None) {
         Ok((_d1, d2, _)) => Duration::seconds(d2.timestamp() - (Utc::now().timestamp_millis() / 1000)),
         Err(_) => {
-            Duration::from_std(humantime::parse_duration(&time_input).unwrap_or(std::time::Duration::from_secs(3600))).unwrap_or(Duration::hours(1))},
+            Duration::from_std(humantime::parse_duration(&time_input).unwrap_or(std::time::Duration::from_secs(11761200))).unwrap_or(Duration::hours(3267))},
     };
 
-    if time_raw.num_minutes().is_negative() {
-        error!("A negative number was parsed.")
-    }
-
     let ht = Some(HumanTime::from(time_raw).to_string());
+
+    if time_raw.num_minutes().is_negative() {
+        return Err(CommandError::from(format!("h-A negative amount of time ({} | {}) was given.", ht.unwrap(), time_raw)));
+    } else if time_raw.num_minutes() == 196020 {
+        return Err(CommandError::from("h-Could not parse anything."));
+    }
 
     match member {
         Ok(m) => {
@@ -138,7 +140,7 @@ async fn mute(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                 msg.channel_id.say(ctx, format!("muted `{}`. they will be unmuted `{}`", m.user.tag(), ht)).await?;
             }
             else{
-                msg.channel_id.say(ctx, format!("kicked `{}`, no reason given.", m.user.tag())).await?;
+                msg.channel_id.say(ctx, format!("muted `{}`, no reason given.", m.user.tag())).await?;
             }
         },
         Err(why) => {return Err(CommandError::from(why.to_string()))}

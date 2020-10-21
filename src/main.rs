@@ -1,6 +1,8 @@
 extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate lazy_static;
 use serenity::{
     async_trait,
     client::bridge::gateway::GatewayIntents,
@@ -150,11 +152,13 @@ async fn before(_ctx: &Context, msg: &Message, command_name: &str) -> bool {
 #[hook]
 async fn after(ctx: &Context, msg: &Message, cmd_name: &str, error: CommandResult) {
     if let Err(why) = &error {
-        error!("Error while running command {}", &cmd_name);
-        error!("{:?}", &error);
-
-        if !&format!("{:?}", why).starts_with("h-") {
+        if !&format!("{:?}", why).contains("h-") {
             let error_code = rand_str(7).replace("`", ",");
+            error!(
+                "Error while running command {} (code {})",
+                &cmd_name, error_code
+            );
+            error!("{:?}", &error);
             let _ = msg
                 .channel_id
                 .say(
@@ -224,11 +228,7 @@ async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> (
                 if given > 1 {
                     format!("{} arguments needed but {} were provided.", min, given)
                 } else if given == 1 {
-                    format!(
-                        "{} arguments needed but
-                     {} was provided.",
-                        min, given
-                    )
+                    format!("{} arguments needed but {} was provided.", min, given)
                 } else {
                     format!("{} arguments needed.", min)
                 }
@@ -251,9 +251,9 @@ pub async fn dynamic_prefix(ctx: &Context, msg: &Message) -> Option<String> {
     let p;
     // if sent from a guild, we check for a prefix in the database
     // TODO: find some way to cache this
-    if let Some(id) = msg.guild_id{
+    if let Some(id) = msg.guild_id {
         if is_prod != &"true".to_string() {
-            return Some(token.to_string())
+            return Some(token.to_string());
         }
         // read from data lock
         let data = ctx.data.read().await;
@@ -368,7 +368,7 @@ async fn main() {
         .group(&MUSIC_GROUP)
         .group(&SETTINGS_GROUP);
 
-    let mut client = Client::new(&token)
+    let mut client = Client::builder(&token)
         .event_handler(Handler)
         .framework(framework)
         .intents({
