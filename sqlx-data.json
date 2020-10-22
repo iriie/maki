@@ -1,5 +1,140 @@
 {
   "db": "PostgreSQL",
+  "01391a59ef583539a9a61f17a78ffc17505ac19c31f4eb200ac9b06bef76228b": {
+    "query": "\n    insert into guilds(id, prefix)\n    values($1, $2)\n\n    returning id, prefix\n    ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "prefix",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Varchar"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "1574bce4d8b2a3b148e53d15fe089a43d9e731b6f34a5057bbe482540e055460": {
+    "query": "\n    insert into users(id, pronouns)\n    values($1, $2)\n\n    returning id, pronouns\n    ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "pronouns",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Varchar"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "1c673c4d007c173712573db054779a7daf212bc8383de1efd02c3540e462a85f": {
+    "query": "\n        insert into guilds(id, prefix)\n        values($1, $2)\n\n        returning id, prefix\n        ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "prefix",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Varchar"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "202d85d9906fb6f5753c014a72797f13adc9c64f9da49baf5909ed5f4781717e": {
+    "query": "\n        insert into users(id, pronouns)\n        values($1, $2)\n\n        returning id, pronouns\n        ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "pronouns",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Varchar"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "2358961191b23fca08be3a57a0fbf3d449edc886037e7720a63e7788bab318ab": {
+    "query": "\n        update guilds \n        set prefix = $1\n        where id = $2\n\n        returning id, prefix\n        ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "prefix",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
   "25dcd350faed030e200289c777c8f50187e9f026c2a131320f3f5a7d1f2a8bc0": {
     "query": "\n            select id, lastfm\n            from users\n            where id = $1\n            limit 1\n            ",
     "describe": {
@@ -17,6 +152,299 @@
       ],
       "parameters": {
         "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "31b77f8cc149300c6bb159977a46e8e4f7b28620ac232d72baf86ff719c9772a": {
+    "query": "\n                update users \n                set pronouns = $1\n                where id = $2\n    \n                returning id, pronouns\n                ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "pronouns",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "689713288065396eff1d719f332a1261c6b633ace5cb9ed8a54ffa3cef2979da": {
+    "query": "\n                select id, pronouns\n                from users\n                where id = $1\n                limit 1\n                ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "pronouns",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "6ca045b2f07d96e793b41424fe5641d59d9397b8fc5296a7a343692d53d903e5": {
+    "query": "\n            insert into guilds(id, prefix)\n            values($1, $2)\n    \n            returning id, prefix\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "prefix",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Varchar"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "95529cfabe44f2eb24178b6d342ff305fc3f99355a30cdc8e4860b9566c1502f": {
+    "query": "\n            update users \n            set pronouns = $1\n            where id = $2\n\n            returning id, pronouns\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "pronouns",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "9bd2ae46f42df9fed5d928eed577bd920c43d39c14b37d8e027c4e5fc9b869bf": {
+    "query": "\n        select id, pronouns\n        from users\n        where id = $1\n        limit 1\n        ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "pronouns",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "af07bd325982ef0dbdf9d6e9a763bd474eddb039bd6217310558c0e4d4af94f9": {
+    "query": "\n    select id, pronouns\n    from users\n    where id = $1\n    limit 1\n    ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "pronouns",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "baa01cca1effd2cdbca16c9c4b37a6baf6cf3aa3b4cb1464de36d0cca494645a": {
+    "query": "\n                insert into users(id, pronouns)\n                values($1, $2)\n    \n                returning id, pronouns\n                ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "pronouns",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Varchar"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "cb528b3458dfad413918ada69968276f5df301828aec7e7e388492ba032f60db": {
+    "query": "\n            select id, prefix\n            from guilds\n            where id = $1\n            limit 1\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "prefix",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "cd2205ecdc689c6ca29f1facc37f89a9a8830b34bc0b90399e0fc094c472ea1e": {
+    "query": "\n            insert into users(id, pronouns)\n            values($1, $2)\n\n            returning id, pronouns\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "pronouns",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Varchar"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "d812021c3d1a999e5a76448ca988eb413f4baaf0e4d14392b72a3242620618a6": {
+    "query": "\n        update users \n        set pronouns = $1\n        where id = $2\n\n        returning id, pronouns\n        ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "pronouns",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "e8651ff749b25c7915447f709bae29d79db8171d607fb278efd366dd07714784": {
+    "query": "\n            update guilds \n            set prefix = $1\n            where id = $2\n    \n            returning id, prefix\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "prefix",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
           "Int8"
         ]
       },
@@ -53,6 +481,32 @@
       ]
     }
   },
+  "eceb878b1997805338780cd551650b43ad2d7543a3d6c8244ef82ec391cf362d": {
+    "query": "\n        select id, prefix\n        from guilds\n        where id = $1\n        limit 1\n        ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "prefix",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
   "f27a72fc44b954f8a66a657b973d640fc0cca7a32535ee6e53a7b7ba7d0d0dc0": {
     "query": "\n            insert into users(id, lastfm)\n            values($1, $2)\n\n            returning id, lastfm\n            ",
     "describe": {
@@ -72,6 +526,32 @@
         "Left": [
           "Int8",
           "Varchar"
+        ]
+      },
+      "nullable": [
+        false,
+        true
+      ]
+    }
+  },
+  "fc32a56176e99cc984970b8f93a2c040b53598ac945d5d74827a4aff535d8900": {
+    "query": "\n            select id, pronouns\n            from users\n            where id = $1\n            limit 1\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "pronouns",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
         ]
       },
       "nullable": [
