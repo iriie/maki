@@ -112,6 +112,7 @@ async fn kick(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 }
 
 #[command]
+#[required_permissions(KICK_MEMBERS)]
 #[description("[WIP] Mute people. (limit one at a time)")]
 async fn mute(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 

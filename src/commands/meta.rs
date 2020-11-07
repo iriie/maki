@@ -302,7 +302,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
                     .field(
                         "Memory",
                         format!(
-                            "`{} MB used`\n`({} MB virt)`\n`{} GB total`",
+                            "`{} MB used`\n`{} MB virt`\n`{} GB available`",
                             &thismem.rss().get::<units::information::megabyte>(),
                             &thismem.vms().get::<units::information::megabyte>(),
                             &fullmem.get::<units::information::gigabyte>()
@@ -334,25 +334,6 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
 #[description("Shut down the bot.")]
 #[owners_only]
 async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
-    let data = ctx.data.read().await;
-
-    if let Some(manager) = data.get::<ShardManagerContainer>() {
-        msg.channel_id.say(&ctx.http, "Shutting down!").await?;
-
-        // Shut down all shards.
-        manager.lock().await.shutdown_all().await;
-    } else {
-        error!("There was a problem getting the shard manager.");
-    }
-
-    Ok(())
-}
-
-#[command]
-#[aliases(pre)]
-#[description("Change the bot's prefix (this server only).")]
-#[owners_only]
-async fn prefix(ctx: &Context, msg: &Message) -> CommandResult {
     let data = ctx.data.read().await;
 
     if let Some(manager) = data.get::<ShardManagerContainer>() {

@@ -304,7 +304,7 @@ async fn server_prefix(ctx: &Context, msg: &Message, args: Args) -> CommandResul
             if prefix.is_empty() {
                 let _ = msg
                     .channel_id
-                    .say(&ctx.http, "creating a Maki user account...")
+                    .say(&ctx.http, "creating a Maki server profile...")
                     .await;
                 let create_prefix = sqlx::query_as!(
                     UpdatePrefix,
