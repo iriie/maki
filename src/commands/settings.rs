@@ -59,6 +59,23 @@ async fn user_pronoun(ctx: &Context, msg: &Message, args: Args) -> CommandResult
     let pool = data.get::<ConnectionPool>().unwrap();
 
     let username = args.rest();
+    if username == "help" {
+        let _ = msg
+            .channel_id
+            .send_message(&ctx.http, |m| {
+                m.embed(|e| {
+                    e.color(0x3498db)
+                    .description(format!(
+                        "A pronoun, in this case, refers to [english personal pronouns](https://en.wikipedia.org/wiki/English_personal_pronouns).
+It is formatted like `subject/object/dep. possessive/indep. possessive`, all in the singular case.
+For example, usually gender-neutral pronouns would be `they/them/their/theirs` and feminine pronouns would be `she/her/her/hers`.
+If you see something wrong, feel free to join [the support server](https://r.izu.moe/discord) and voice your opinions"
+                    ))
+                })
+            })
+            .await;
+        return Ok(());
+    }
     match get_members(ctx, msg, username.to_string()).await {
         Ok(u) => {
             let pn = get_pronouns(u.user, ctx).await;
@@ -90,9 +107,13 @@ async fn user_pronoun(ctx: &Context, msg: &Message, args: Args) -> CommandResult
                 .fetch_all(pool)
                 .await?;
                 let none = &"they/them/their/theirs. To change them, run this command but add pronouns to the end.".to_string();
-                let pn = match &get_pn[0].pronouns {
-                    Some(v) => v,
-                    None => none,
+                let pn = if &get_pn.len() >= &1 {
+                    match &get_pn[0].pronouns {
+                        Some(v) => v,
+                        None => none,
+                    }
+                } else {
+                    none
                 };
                 let _ = msg
                     .channel_id
@@ -101,7 +122,7 @@ async fn user_pronoun(ctx: &Context, msg: &Message, args: Args) -> CommandResult
             } else {
                 if !does_pn_match(username) {
                     return Err(CommandError::from(
-                        "h-This doesn't look like a valid pronoun combination. I use this regex to check pronouns:` `/^[a-z0-9_-]{1,6}/[a-z0-9_-]{1,6}/[a-z0-9_-]{1,6}/[a-z0-9_-]{1,6}$/g`",
+                        "h-This doesn't look like a valid pronoun combination. I use this regex to check pronouns:` `/^[a-z0-9_-]{1,6}/[a-z0-9_-]{1,6}/[a-z0-9_-]{1,6}/[a-z0-9_-]{1,6}$/g`\n`For more info do @maki user pn help.",
                     ));
                 }
                 let update_fm = sqlx::query_as!(
@@ -124,7 +145,7 @@ async fn user_pronoun(ctx: &Context, msg: &Message, args: Args) -> CommandResult
                         .channel_id
                         .say(&ctx.http, "creating a Maki user account...")
                         .await;
-                    let update_fm = sqlx::query_as!(
+                    let _ = sqlx::query_as!(
                         UpdatePronoun,
                         "
                 insert into users(id, pronouns)
@@ -137,15 +158,6 @@ async fn user_pronoun(ctx: &Context, msg: &Message, args: Args) -> CommandResult
                     )
                     .fetch_all(pool)
                     .await?;
-                    let _ = msg
-                        .channel_id
-                        .say(&ctx.http, format!("{:?}", update_fm))
-                        .await;
-                } else {
-                    let _ = msg
-                        .channel_id
-                        .say(&ctx.http, format!("{:?}", update_fm))
-                        .await;
                 }
 
                 let tosay = "".to_string()
@@ -191,61 +203,51 @@ pub async fn user_lastfm(ctx: &Context, msg: &Message, args: Args) -> CommandRes
                 .await;
         }
         Err(_) => {
-
-    let update_fm = sqlx::query_as!(
-        UpdateLastFM,
-        "
+            let update_fm = sqlx::query_as!(
+                UpdateLastFM,
+                "
             update users 
             set lastfm = $1
             where id = $2
 
             returning id, lastfm
             ",
-        username,
-        msg.author.id.0 as i64
-    )
-    .fetch_all(pool)
-    .await?;
+                username,
+                msg.author.id.0 as i64
+            )
+            .fetch_all(pool)
+            .await?;
 
-    if update_fm.is_empty() {
-        let _ = msg
-            .channel_id
-            .say(&ctx.http, "creating a Maki user account...")
-            .await;
-        let update_fm = sqlx::query_as!(
-            UpdateLastFM,
-            "
+            if update_fm.is_empty() {
+                let _ = msg
+                    .channel_id
+                    .say(&ctx.http, "creating a Maki user account...")
+                    .await;
+                let _ = sqlx::query_as!(
+                    UpdateLastFM,
+                    "
             insert into users(id, lastfm)
             values($1, $2)
 
             returning id, lastfm
             ",
-            msg.author.id.0 as i64,
-            username
-        )
-        .fetch_all(pool)
-        .await?;
-        let _ = msg
-            .channel_id
-            .say(&ctx.http, format!("{:?}", update_fm))
-            .await;
-    } else {
-        let _ = msg
-            .channel_id
-            .say(&ctx.http, format!("{:?}", update_fm))
-            .await;
-    }
+                    msg.author.id.0 as i64,
+                    username
+                )
+                .fetch_all(pool)
+                .await?;
+            }
 
-    let tosay = "".to_string()
-        + &msg.author.tag()
-        + " ("
-        + &msg.author.id.to_string()
-        + ")"
-        + "'s last.fm username is saved as "
-        + username;
+            let tosay = "".to_string()
+                + &msg.author.tag()
+                + " ("
+                + &msg.author.id.to_string()
+                + ")"
+                + "'s last.fm username is saved as "
+                + username;
 
-    let _ = msg.channel_id.say(&ctx.http, tosay).await;
-}
+            let _ = msg.channel_id.say(&ctx.http, tosay).await;
+        }
     }
     Ok(())
 }
