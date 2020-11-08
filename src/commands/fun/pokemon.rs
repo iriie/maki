@@ -1,17 +1,87 @@
-use graphql_client::{GraphQLQuery, Response};
 use rand::Rng;
 use serenity::framework::standard::macros::command;
-use serenity::framework::standard::{Args, CommandError, CommandResult};
+use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "graphql/pokemon_schema.graphql",
-    query_path = "graphql/pokemon_query.graphql",
-    response_derives = "Debug"
-)]
-struct MyQuery;
+use serde;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+pub struct PokemonResults {
+    hits: Vec<Hit>,
+    offset: i64,
+    limit: i64,
+    #[serde(rename = "nbHits")]
+    nb_hits: i64,
+    #[serde(rename = "exhaustiveNbHits")]
+    exhaustive_nb_hits: bool,
+    #[serde(rename = "processingTimeMs")]
+    processing_time_ms: i64,
+    query: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Hit {
+    species: String,
+    num: i64,
+    types: Vec<String>,
+    #[serde(rename = "genderRatio")]
+    gender_ratio: GenderRatio,
+    #[serde(rename = "baseStats")]
+    base_stats: BaseStats,
+    abilities: Abilities,
+    heightm: f64,
+    weightkg: f64,
+    color: String,
+    #[serde(rename = "eggGroups")]
+    egg_groups: Vec<String>,
+    image: String,
+    #[serde(rename = "dexId")]
+    dex_id: i64,
+    id: i64,
+    sprite: String,
+    #[serde(rename = "flavorText")]
+    flavor_text: Vec<FlavorText>,
+    evos: Option<Vec<String>>,
+    #[serde(rename = "baseForme")]
+    base_forme: Option<String>,
+    #[serde(rename = "cosmeticFormes")]
+    cosmetic_formes: Option<Vec<String>>,
+    #[serde(rename = "baseSpecies")]
+    base_species: Option<String>,
+    forme: Option<String>,
+    #[serde(rename = "formeLetter")]
+    forme_letter: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Abilities {
+    first: String,
+    hidden: Option<String>,
+    second: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BaseStats {
+    hp: i64,
+    atk: i64,
+    def: i64,
+    spa: i64,
+    spd: i64,
+    spe: i64,
+}
+#[derive(Serialize, Deserialize)]
+pub struct FlavorText {
+    version_id: String,
+    flavor_text: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct GenderRatio {
+    male: f64,
+    female: f64,
+}
 
 #[command]
 #[aliases(poke, pk, pokemon)]
@@ -28,39 +98,24 @@ async fn pokemon(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 async fn pokemon_pokedex(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let pokemon: String = args.rest().to_string(); // gets args
 
-    let q = MyQuery::build_query(my_query::Variables { pokemon: pokemon }); // builds graphql query using args
-
     let client = reqwest::Client::new();
 
-    let res = client
-        .post("https://graphqlpokemon.favware.tech")
-        .json(&q)
-        .send()
-        .await.unwrap(); // sends gql query
+    let pokemon_results: PokemonResults = client.get(&format!("https://dex.izu.moe/api/search/full?q={}", pokemon)).send().await?.json().await?;
 
-    let response_body: Response<my_query::ResponseData> = res.json().await?;
-
-    if let Some(errors) = response_body.errors {
-        for error in &errors {
-            error!("{:?}", error.message);
-        }
+    if pokemon_results.hits.len() < 1 {
         msg.channel_id
-            .say(&ctx.http, "That pokemon could not be found.")
+            .say(&ctx.http, format!("couldn't find anything for {}.", pokemon))
             .await?;
-        return Err(CommandError::from("h-No Pokémon found"));
+        return Ok(())
     }
+    let poke = &pokemon_results.hits[0];
 
-    let response_data: my_query::ResponseData = response_body.data.expect("missing response data");
-
-    let num = rand::thread_rng().gen_range(
+    let num :usize = rand::thread_rng().gen_range(
         0,
-        &response_data
-            .get_pokemon_details_by_fuzzy
-            .flavor_texts
-            .len(),
-    ); //
+        &poke.flavor_text.len()
+    );
 
-    let pokemon_types = &response_data.get_pokemon_details_by_fuzzy.types.join("/"); // if more than one type, combines them with a "/"
+    let pokemon_types = &poke.types.join("/"); // if more than one type, combines them with a "/"
 
     let _ = msg
         .channel_id
@@ -69,29 +124,28 @@ async fn pokemon_pokedex(ctx: &Context, msg: &Message, args: Args) -> CommandRes
                 e.color(0x3498db)
                     .title(format!(
                         "Pokédex: {} | {}",
-                        cap_first_letter(&response_data.get_pokemon_details_by_fuzzy.species),
-                        response_data.get_pokemon_details_by_fuzzy.num
+                        cap_first_letter(&poke.species),
+                        poke.num
                     ))
                     .url(format!(
                         "https://www.pokemon.com/us/pokedex/{}",
-                        &response_data
-                            .get_pokemon_details_by_fuzzy
+                        &poke
                             .species
                             .replace(" ", "-")
                     ))
                     .thumbnail(format!(
                         "https://assets.pokemon.com/assets/cms2/img/pokedex/full/{:03}.png",
-                        response_data.get_pokemon_details_by_fuzzy.num
+                        poke.num
                     ))
                     .description(format!(
                         "Types: {}\nHeight: {}m\nWeight: {}kg\n\n{}\n- Pokémon {}",
                         pokemon_types,
-                        &response_data.get_pokemon_details_by_fuzzy.height,
-                        &response_data.get_pokemon_details_by_fuzzy.weight,
-                        &response_data.get_pokemon_details_by_fuzzy.flavor_texts[num].flavor,
-                        &response_data.get_pokemon_details_by_fuzzy.flavor_texts[num].game
+                        &poke.heightm,
+                        &poke.weightkg,
+                        &poke.flavor_text[num].flavor_text,
+                        &poke.flavor_text[num].version_id
                     ))
-                    .footer(|f| f.text("Data from favware/graphql-pokemon"))
+                    .footer(|f| f.text("Data from dex.izu.moe"))
             })
         })
         .await;
