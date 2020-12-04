@@ -333,6 +333,19 @@ async fn recent_tracks(ctx: &Context, msg: &Message, data: &Value) {
     send_last_fm_embed(ctx, msg, None, &title, username, &s, first_image).await;
 }
 
+fn is_string_numeric(str: String) -> bool {
+    for c in str.chars() {
+        if !c.is_numeric() {
+            return false;
+        }
+    }
+    return true;
+}
+
+fn is_eighteen_chars(str: &str) -> bool {
+    str.len() == 18
+}
+
 async fn get_lastfm_data(
     ctx: &Context,
     msg: &Message,
@@ -342,10 +355,23 @@ async fn get_lastfm_data(
 ) -> Result<Value, CommandError> {
     dbg!(username);
     let fm_username: String;
-    if username == "" || username.starts_with("<@") {
+    if username == "" || username.starts_with("<") || (is_string_numeric(username.to_string()) && is_eighteen_chars(username)) {
         // read from data lock
         let data = ctx.data.read().await;
         // get our db pool from the data lock
+
+        let mut user = username.trim_start_matches("<@");
+        user = user.trim_start_matches("!");
+        user = user.trim_end_matches(">");
+        user = user.trim_start_matches(char::is_alphabetic);
+        let author_str = &msg.author.id.0.to_string();
+        if user == "" {
+            user = author_str
+        };
+
+        dbg!(user);
+
+        let u = user.parse::<i64>()?;
 
         let pool = data.get::<ConnectionPool>().unwrap();
 
@@ -357,7 +383,7 @@ async fn get_lastfm_data(
             where id = $1
             limit 1
             ",
-            msg.author.id.0 as i64
+            u as i64
         )
         .fetch_all(pool)
         .await?;
