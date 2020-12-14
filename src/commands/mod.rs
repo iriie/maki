@@ -4,3 +4,4 @@ pub mod meta;
 pub mod moderator;
 pub mod music;
 pub mod settings;
+pub mod voice;

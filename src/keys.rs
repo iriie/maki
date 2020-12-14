@@ -1,4 +1,4 @@
-use serenity::client::bridge::gateway::ShardManager;
+use serenity::{model::id::GuildId, client::bridge::gateway::ShardManager};
 
 use serenity::prelude::*;
 
@@ -9,6 +9,10 @@ use sqlx::PgPool;
 use tokio::sync::Mutex;
 
 use chrono::{DateTime, Utc};
+
+use crate::utils::queue::TrackQueue;
+
+use tokio::sync::RwLock;
 
 // A container type is created for inserting into the Client's `data`, which
 // allows for data to be accessible across all events and framework commands, or
@@ -34,4 +38,10 @@ pub struct ConnectionPool;
 
 impl TypeMapKey for ConnectionPool {
     type Value = PgPool;
+}
+
+pub struct VoiceQueue;
+
+impl TypeMapKey for VoiceQueue {
+    type Value = Arc<RwLock<HashMap<GuildId, TrackQueue>>>;
 }

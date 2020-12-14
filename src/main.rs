@@ -3,6 +3,9 @@ extern crate pretty_env_logger;
 extern crate log;
 #[macro_use]
 extern crate lazy_static;
+
+use songbird::SerenityInit;
+
 use serenity::{
     async_trait,
     client::bridge::gateway::GatewayIntents,
@@ -41,6 +44,7 @@ use commands::moderator::*;
 use commands::music::lastfm::*;
 use commands::music::spotify::*;
 use commands::settings::*;
+use commands::voice::play::*;
 
 use utils::db::get_pool;
 
@@ -106,6 +110,11 @@ struct Fun;
 #[commands(lastfm, spotify)]
 #[description = "search or show your own music."]
 struct Music;
+
+#[group]
+#[commands(join, play, skip, queue, leave)]
+#[description = "play music in a voice channel."]
+struct Voice;
 
 #[group]
 #[commands(server, user)]
@@ -366,11 +375,13 @@ async fn main() {
         .group(&GENERAL_GROUP)
         .group(&FUN_GROUP)
         .group(&MUSIC_GROUP)
+        .group(&VOICE_GROUP)
         .group(&SETTINGS_GROUP);
 
     let mut client = Client::builder(&token)
         .event_handler(Handler)
         .framework(framework)
+        .register_songbird()
         .intents({
             let mut intents = GatewayIntents::all();
             intents.remove(GatewayIntents::GUILD_PRESENCES);
@@ -387,6 +398,7 @@ async fn main() {
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
         let pool = get_pool().await.unwrap();
         data.insert::<ConnectionPool>(pool.clone());
+        data.insert::<VoiceQueue>(Arc::new(RwLock::new(HashMap::default())));
     }
 
     if let Err(why) = client.start_autosharded().await {

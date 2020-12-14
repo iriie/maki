@@ -19,12 +19,13 @@ regex = "1.3.9"
 pretty_env_logger = "0.4.0"
 aspotify = "0.5.0"
 lazy_static = "1.4.0"
-sqlx = { version = "0.4.0-beta.1", default-features = false, features = [ "runtime-tokio", "macros", "postgres", "sqlite", "chrono", "json", "offline" ] }
-heim = { version = "0.1.0-beta.2", features = ["memory", "process"] }
+sqlx = { version = "0.4.0-beta.1", default-features = false, features = [ "runtime-tokio-native-tls", "macros", "postgres", "sqlite", "chrono", "json", "offline" ] }
+heim = { git = "https://github.com/heim-rs/heim", features = ["memory", "process"] }
 chrono-humanize = "0.0.11"
 two_timer = "2.1.0"
 futures = "0.3.5"
 humantime = "2.0.1"
+parking_lot = "0.11.1"
 
 [dependencies.tokio]
 version = "0.2"
@@ -34,4 +35,9 @@ features = ["full"]
 git = "https://github.com/serenity-rs/serenity"
 branch = "next"
 default-features = false
-features = ["builder", "cache", "client", "framework", "gateway", "http", "model", "standard_framework", "utils", "native_tls_backend", "absolute_ratelimits", "collector"]
+features = ["builder", "cache", "client", "framework", "gateway", "http", "model", "standard_framework", "utils", "voice", "native_tls_backend", "absolute_ratelimits", "collector"]
+
+[dependencies.songbird]
+path = "../songbird/"
+# branch = "next"
+features = ["driver","gateway","serenity-native"]
