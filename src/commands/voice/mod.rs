@@ -34,7 +34,7 @@ impl VoiceEventHandler for TrackEndNotifier {
                 0 => "No songs left in queue.".to_string(),
                 _ => match (&m.title, &m.artist) {
                     (Some(t), Some(a)) => format!("Now playing: {} by {}", t, a),
-                    _ => "hi".to_string()
+                    _ => "Now playing another song. (no metadata)".to_string()
                 },
             };
 

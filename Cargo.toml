@@ -38,6 +38,6 @@ default-features = false
 features = ["builder", "cache", "client", "framework", "gateway", "http", "model", "standard_framework", "utils", "voice", "native_tls_backend", "absolute_ratelimits", "collector"]
 
 [dependencies.songbird]
-path = "../songbird/"
-# branch = "next"
+git = "https://github.com/kanbaru/songbird"
+branch = "next"
 features = ["driver","gateway","serenity-native"]

@@ -37,6 +37,47 @@ struct Image {
 }
 
 #[command]
+#[description("whats a ship")]
+async fn ship(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let first = args.single::<String>().unwrap();
+    let second = args.single::<String>().unwrap();
+    let to_compare: String = if &first > &second {
+        first.to_owned() + &second
+    } else {
+        second.to_owned() + &first
+    };
+    let percent = divide_until(get_number_from_string(&to_compare).await, 100, 2).await;
+    let exclamatory_message = match percent{
+        0..=39 => "not too good.",
+        40..=59 => "seems okay.",
+        60..=68 => "nice!",
+        69 => "nice.",
+        70..=76 => "nice!",
+        77..=97 => "woah! amazing!",
+        98..=100 => "is this even possible?",
+        _ => "this shouldnt happen???",
+    };
+    msg.channel_id.say(&ctx.http, format!("shipping!!!\n1. {}\n2. {}\nboth of them seem to be {}% compatible! {}",first, second, percent, exclamatory_message)).await?;
+    Ok(())
+}
+
+async fn get_number_from_string(string: &str) -> i32 {
+    let bytes = string.as_bytes();
+    let mut ret: i32 = 50;
+    for b in 1..bytes.len() {
+        ret = ret + bytes[b - 1] as i32;
+    }
+    ret
+}
+
+async fn divide_until(mut n: i32, until: i32, by: i32) -> i32 {
+    while n > until {
+        n = n / by
+    };
+    n
+}
+
+#[command]
 #[aliases(ud)]
 #[description("Gets definitions from UrbanDictionary")]
 async fn urbandictionary(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
@@ -91,9 +132,12 @@ async fn pikachu(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     let deserialized: Image = serde_json::from_value(data.clone()).unwrap();
 
-    let _ = msg.channel_id.send_message(&ctx.http, |m| {
-        m.embed(|e| e.color(0x3498db).title("pika!").image(deserialized.image))
-    }).await?;
+    let _ = msg
+        .channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|e| e.color(0x3498db).title("pika!").image(deserialized.image))
+        })
+        .await?;
     Ok(())
 }
 

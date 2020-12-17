@@ -18,6 +18,17 @@ async fn get_source<P: AsRef<OsStr>>(
 ) -> Result<songbird::input::Input, String> {
     dbg!(path_string.split("/").collect::<Vec<&str>>()[2]);
     let source = match path_string.split("/").collect::<Vec<&str>>()[2] {
+        "www.youtube.com" | "youtube.com" | "youtu.be" | "soundcloud.com"=> match songbird::ytdl(&path_string).await {
+            Ok(source) => {
+                info!("youtube track added");
+                source
+            }
+            Err(why) => {
+                println!("Err starting source: {:?}", why);
+
+                return Err("fuck. a youtube-dl error.".to_string());
+            }
+        },
         _ => match songbird::ffmpeg(&path).await {
             Ok(source) => {
                 //source.metadata.title = Some("hi".to_string());
@@ -26,7 +37,7 @@ async fn get_source<P: AsRef<OsStr>>(
             Err(why) => {
                 println!("Err starting source: {:?}", why);
 
-                return Err("fuck".to_string());
+                return Err("fuck. a ffmpeg error.".to_string());
             }
         },
     };

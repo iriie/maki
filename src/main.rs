@@ -102,7 +102,7 @@ struct Moderation;
 struct General;
 
 #[group]
-#[commands(urbandictionary, pikachu, pokemon)]
+#[commands(ship, urbandictionary, pikachu, pokemon)]
 #[description = "funny gaming."]
 struct Fun;
 
