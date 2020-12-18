@@ -36,6 +36,13 @@ struct Image {
     pub image: String,
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+struct Gif {
+    id: i64,
+    url: String,
+    category: String,
+}
+
 #[command]
 #[description("whats a ship")]
 async fn ship(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
@@ -47,7 +54,7 @@ async fn ship(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         second.to_owned() + &first
     };
     let percent = divide_until(get_number_from_string(&to_compare).await, 100, 2).await;
-    let exclamatory_message = match percent{
+    let exclamatory_message = match percent {
         0..=39 => "not too good.",
         40..=59 => "seems okay.",
         60..=68 => "nice!",
@@ -57,7 +64,15 @@ async fn ship(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         98..=100 => "is this even possible?",
         _ => "this shouldnt happen???",
     };
-    msg.channel_id.say(&ctx.http, format!("shipping!!!\n1. {}\n2. {}\nboth of them seem to be {}% compatible! {}",first, second, percent, exclamatory_message)).await?;
+    msg.channel_id
+        .say(
+            &ctx.http,
+            format!(
+                "shipping!!!\n1. {}\n2. {}\nboth of them seem to be {}% compatible! {}",
+                first, second, percent, exclamatory_message
+            ),
+        )
+        .await?;
     Ok(())
 }
 
@@ -73,7 +88,7 @@ async fn get_number_from_string(string: &str) -> i32 {
 async fn divide_until(mut n: i32, until: i32, by: i32) -> i32 {
     while n > until {
         n = n / by
-    };
+    }
     n
 }
 
@@ -136,6 +151,81 @@ async fn pikachu(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         .channel_id
         .send_message(&ctx.http, |m| {
             m.embed(|e| e.color(0x3498db).title("pika!").image(deserialized.image))
+        })
+        .await?;
+    Ok(())
+}
+
+#[command]
+#[description("hug!")]
+async fn hug(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let rest = args.remains();
+    let title = match rest {
+        Some(user) => match msg.mentions.len() >= 1 {
+            true => {
+                let to_be_called = match msg.clone().mentions[0]
+                    .nick_in(&ctx.http, msg.guild_id.unwrap())
+                    .await
+                {
+                    Some(nick) => nick,
+                    None => msg.mentions[0].name.to_owned(),
+                };
+                format!("{} hugged {}!",msg.author_nick(&ctx.http).await.unwrap_or(msg.clone().author.name), to_be_called)
+            }
+            false => format!("{} hugged {}!",msg.author_nick(&ctx.http).await.unwrap_or(msg.clone().author.name), user),
+        },
+        None => "hugs!".to_string(),
+    };
+    let client = reqwest::Client::new();
+    let results: Gif = client
+        .get("https://gif.izu.moe/api/gif/hug")
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    let _ = msg
+        .channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|e| e.color(0x3498db).title(title).image(results.url))
+        })
+        .await?;
+    Ok(())
+}
+
+#[command]
+#[description("pat!")]
+async fn pat(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let rest = args.remains();
+    let title = match rest {
+        Some(user) => match msg.mentions.len() >= 1 {
+            true => {
+                let to_be_called = match msg.clone().mentions[0]
+                    .nick_in(&ctx.http, msg.guild_id.unwrap())
+                    .await
+                {
+                    Some(nick) => nick,
+                    None => msg.mentions[0].name.to_owned(),
+                };
+                format!("{} patted {}!",msg.author_nick(&ctx.http).await.unwrap_or(msg.clone().author.name), to_be_called)
+            }
+            false => format!("{} patted {}!",msg.author_nick(&ctx.http).await.unwrap_or(msg.clone().author.name), user),
+        },
+        None => "someone patted you!".to_string(),
+    };
+
+    let client = reqwest::Client::new();
+    let results: Gif = client
+        .get("https://gif.izu.moe/api/gif/pat")
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    let _ = msg
+        .channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|e| e.color(0x3498db).title(title).image(results.url))
         })
         .await?;
     Ok(())

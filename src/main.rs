@@ -97,14 +97,19 @@ struct Admin;
 struct Moderation;
 
 #[group]
-#[commands(translate, weather, invite, ping, stats, say)]
+#[commands(translate, weather, invite, ping, stats, say, urbandictionary)]
 #[description = "general stuff, or stuff that won't fit anywhere else."]
 struct General;
 
 #[group]
-#[commands(ship, urbandictionary, pikachu, pokemon)]
+#[commands(ship, pikachu, pokemon)]
 #[description = "funny gaming."]
 struct Fun;
+
+#[group]
+#[commands(hug, pat)]
+#[description = "gets gifs from other services (lolol)"]
+struct Gif;
 
 #[group]
 #[commands(lastfm, spotify)]
@@ -374,6 +379,7 @@ async fn main() {
         .group(&MODERATION_GROUP)
         .group(&GENERAL_GROUP)
         .group(&FUN_GROUP)
+        .group(&GIF_GROUP)
         .group(&MUSIC_GROUP)
         .group(&VOICE_GROUP)
         .group(&SETTINGS_GROUP);

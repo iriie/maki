@@ -100,20 +100,28 @@ async fn pokemon_pokedex(ctx: &Context, msg: &Message, args: Args) -> CommandRes
 
     let client = reqwest::Client::new();
 
-    let pokemon_results: PokemonResults = client.get(&format!("https://dex.izu.moe/api/search/full?q={}", pokemon)).send().await?.json().await?;
+    let pokemon_results: PokemonResults = client
+        .get(&format!(
+            "https://dex.izu.moe/api/search/full?q={}",
+            pokemon
+        ))
+        .send()
+        .await?
+        .json()
+        .await?;
 
     if pokemon_results.hits.len() < 1 {
         msg.channel_id
-            .say(&ctx.http, format!("couldn't find anything for {}.", pokemon))
+            .say(
+                &ctx.http,
+                format!("couldn't find anything for {}.", pokemon),
+            )
             .await?;
-        return Ok(())
+        return Ok(());
     }
     let poke = &pokemon_results.hits[0];
 
-    let num :usize = rand::thread_rng().gen_range(
-        0,
-        &poke.flavor_text.len()
-    );
+    let num: usize = rand::thread_rng().gen_range(0, &poke.flavor_text.len());
 
     let pokemon_types = &poke.types.join("/"); // if more than one type, combines them with a "/"
 
@@ -129,9 +137,7 @@ async fn pokemon_pokedex(ctx: &Context, msg: &Message, args: Args) -> CommandRes
                     ))
                     .url(format!(
                         "https://www.pokemon.com/us/pokedex/{}",
-                        &poke
-                            .species
-                            .replace(" ", "-")
+                        &poke.species.replace(" ", "-")
                     ))
                     .thumbnail(format!(
                         "https://assets.pokemon.com/assets/cms2/img/pokedex/full/{:03}.png",
