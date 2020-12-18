@@ -2,7 +2,9 @@ pub mod play;
 
 use std::{collections::{HashMap, hash_map::RandomState}, sync::Arc};
 
-use serenity::{model::id::GuildId, async_trait, http::Http, model::prelude::ChannelId};
+use serenity::{model::id::GuildId, async_trait, http::Http, model::prelude::ChannelId, framework::standard::{Args, CommandOptions, Reason, macros::check}};
+use serenity::model::prelude::*;
+use serenity::prelude::*;
 
 use songbird::{
     model::payload::{ClientConnect, ClientDisconnect, Speaking},
@@ -18,6 +20,17 @@ pub struct TrackEndNotifier {
     http: Arc<Http>,
     //manager: Arc<Songbird>,
     queue: Arc<RwLock<HashMap<GuildId, TrackQueue, RandomState>>>,
+}
+
+#[check]
+#[name = "whitelisted_guilds"]
+async fn music_check(_: &Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> Result<(), Reason> {
+    let allowed_guilds = [&228625269101953035, &290284538733658112, &781421814601089055, &418093857394262020, &381880193251409931];
+    if !allowed_guilds.contains(&msg.guild_id.unwrap_or(GuildId(1)).as_u64()) {
+        return Err(Reason::Log("Not in whitelisted guild".to_string()));
+    }
+
+    Ok(())
 }
 
 #[async_trait]

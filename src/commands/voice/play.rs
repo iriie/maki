@@ -10,7 +10,8 @@ use serenity::{
 use songbird::{CoreEvent, Event, Songbird, TrackEvent};
 use std::{sync::Arc, collections::{HashMap, hash_map::RandomState}, ffi::OsStr};
 
-use crate::{utils::queue::TrackQueue, commands::voice::{Receiver, TrackEndNotifier}, keys::VoiceQueue};
+use crate::{utils::queue::TrackQueue, commands::voice::{Receiver, TrackEndNotifier, WHITELISTED_GUILDS_CHECK}, keys::VoiceQueue};
+
 
 async fn get_source<P: AsRef<OsStr>>(
     path: P,
@@ -46,6 +47,7 @@ async fn get_source<P: AsRef<OsStr>>(
 
 #[command]
 #[only_in(guilds)]
+#[checks(whitelisted_guilds)]
 async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
     // get our queue
     let data = ctx.data.read().await;
@@ -84,6 +86,7 @@ async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[only_in(guilds)]
+#[checks(whitelisted_guilds)]
 async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let url = match args.single::<String>() {
         Ok(url) => url,
@@ -260,6 +263,7 @@ async fn connect_and_register(
 
 #[command]
 #[only_in(guilds)]
+#[checks(whitelisted_guilds)]
 async fn queue(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     match args.is_empty() {
         false => play(ctx, msg, args).await?,
@@ -307,6 +311,7 @@ async fn join(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[only_in(guilds)]
+#[checks(whitelisted_guilds)]
 async fn skip(ctx: &Context, msg: &Message, _args: Args) -> CommandResult {
 
         // get our queue
