@@ -26,7 +26,7 @@ RUN ls target/release
 RUN find "$(pwd)"
 
 # Create a minimal docker file with only the resulting binary
-FROM alpine:latest
+FROM gcr.io/distroless/base
 ARG project_name
 RUN apk update && apk add ffmpeg youtube-dl && rm -rf /var/cache/apk/*
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
