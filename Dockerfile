@@ -8,7 +8,7 @@ FROM clux/muslrust:stable AS build
 ARG project_name
 
 # install lib/s needed by Songbird
-RUN apt-get install libopus
+RUN apt-get update && apt-get install -y libopus-dev
 
 # Create layer for the dependencies, so we don't have to rebuild them later
 WORKDIR /usr/src
