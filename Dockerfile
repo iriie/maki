@@ -28,7 +28,7 @@ RUN find "$(pwd)"
 # Create a minimal docker file with only the resulting binary
 FROM alpine:latest
 ARG project_name
-RUN apk update && apk add libopus ffmpeg youtubedl && rm -rf /var/cache/apk/*
+RUN apk update && apk add ffmpeg youtube-dl && rm -rf /var/cache/apk/*
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /usr/src/$project_name/target/x86_64-unknown-linux-musl/release/$project_name ./app
 USER 1000
