@@ -7,6 +7,9 @@ ARG project_name=maki
 FROM clux/muslrust:stable AS build
 ARG project_name
 
+# install lib/s needed by Songbird
+RUN apt-get install libopus
+
 # Create layer for the dependencies, so we don't have to rebuild them later
 WORKDIR /usr/src
 RUN USER=root cargo new $project_name
@@ -25,6 +28,7 @@ RUN find "$(pwd)"
 # Create a minimal docker file with only the resulting binary
 FROM alpine:latest
 ARG project_name
+RUN pkg add libopus ffmpeg youtubedl
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /usr/src/$project_name/target/x86_64-unknown-linux-musl/release/$project_name ./app
 USER 1000
