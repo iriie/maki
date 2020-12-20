@@ -26,9 +26,9 @@ RUN ls target/release
 RUN find "$(pwd)"
 
 # Create a minimal docker file with only the resulting binary
-FROM gcr.io/distroless/base
+FROM debian:stable-slim
 ARG project_name
-RUN apk update && apk add ffmpeg youtube-dl && rm -rf /var/cache/apk/*
+RUN apt update && apt install ffmpeg youtube-dl
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /usr/src/$project_name/target/x86_64-unknown-linux-musl/release/$project_name ./app
 USER 1000
