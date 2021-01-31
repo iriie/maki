@@ -8,10 +8,17 @@ use serenity::{
 };
 
 use songbird::{CoreEvent, Event, Songbird, TrackEvent};
-use std::{sync::Arc, collections::{HashMap, hash_map::RandomState}, ffi::OsStr};
+use std::{
+    collections::{hash_map::RandomState, HashMap},
+    ffi::OsStr,
+    sync::Arc,
+};
 
-use crate::{utils::queue::TrackQueue, commands::voice::{Receiver, TrackEndNotifier, WHITELISTED_GUILDS_CHECK}, keys::VoiceQueue};
-
+use crate::{
+    commands::voice::{Receiver, TrackEndNotifier, WHITELISTED_GUILDS_CHECK},
+    keys::VoiceQueue,
+    utils::queue::TrackQueue,
+};
 
 async fn get_source<P: AsRef<OsStr>>(
     path: P,
@@ -19,17 +26,19 @@ async fn get_source<P: AsRef<OsStr>>(
 ) -> Result<songbird::input::Input, String> {
     dbg!(path_string.split("/").collect::<Vec<&str>>()[2]);
     let source = match path_string.split("/").collect::<Vec<&str>>()[2] {
-        "www.youtube.com" | "youtube.com" | "youtu.be" | "soundcloud.com"=> match songbird::ytdl(&path_string).await {
-            Ok(source) => {
-                info!("youtube track added");
-                source
-            }
-            Err(why) => {
-                println!("Err starting source: {:?}", why);
+        "www.youtube.com" | "youtube.com" | "youtu.be" | "soundcloud.com" => {
+            match songbird::ytdl(&path_string).await {
+                Ok(source) => {
+                    info!("youtube track added");
+                    source
+                }
+                Err(why) => {
+                    println!("Err starting source: {:?}", why);
 
-                return Err("fuck. a youtube-dl error.".to_string());
+                    return Err("fuck. a youtube-dl error.".to_string());
+                }
             }
-        },
+        }
         _ => match songbird::ffmpeg(&path).await {
             Ok(source) => {
                 //source.metadata.title = Some("hi".to_string());
@@ -125,19 +134,37 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             let mut handler = handler_lock.lock().await;
 
             let source = get_source(&url, &url).await?;
+            let metadata = source.metadata.clone();
 
             //handler.enqueue_source(source);
             queue.add_source(source, &mut handler);
 
-            msg.channel_id
-                .say(
-                    &ctx.http,
-                    format!(
-                        "Added song to queue: position {}",
-                        queue.len() - 1
-                    ),
-                )
-                .await?;
+            match queue.len() {
+                1 => {
+                    msg.channel_id
+                        .say(
+                            &ctx.http,
+                            format!(
+                                "Now playing: `{}` by `{}`",
+                                metadata.title.unwrap_or("Unknown".to_string()),
+                                metadata.artist.unwrap_or("unknown".to_string())
+                            ),
+                        )
+                        .await?;
+                }
+                _ => {
+                    msg.channel_id
+                        .say(
+                            &ctx.http,
+                            format!(
+                                "Added `{}` to queue at position {}",
+                                metadata.title.unwrap_or("song".to_string()),
+                                queue.len() - 1
+                            ),
+                        )
+                        .await?;
+                }
+            }
         }
     } else {
         let channel_id = guild
@@ -172,6 +199,7 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                 let mut handler = handler_lock.lock().await;
 
                 let source = get_source(&url, &url).await?;
+                let metadata = source.metadata.clone();
 
                 //handler.enqueue_source(source);
                 queue.add_source(source, &mut handler);
@@ -181,23 +209,35 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                 match queue.len() {
                     1 => {
                         msg.channel_id
-                            .say(&ctx.http, format!("Now playing a song"))
-                            .await?
+                            .say(
+                                &ctx.http,
+                                format!(
+                                    "Now playing: `{}` by `{}`",
+                                    metadata.title.unwrap_or("Unknown".to_string()),
+                                    metadata.artist.unwrap_or("unknown".to_string())
+                                ),
+                            )
+                            .await?;
                     }
                     _ => {
                         msg.channel_id
                             .say(
                                 &ctx.http,
                                 format!(
-                                    "Added song to queue: position {}",
-                                    q.len() - 1
+                                    "Added `{}` to queue at position {}",
+                                    metadata.title.unwrap_or("song".to_string()),
+                                    queue.len() - 1
                                 ),
                             )
-                            .await?
+                            .await?;
                     }
-                };
-            } else {println!("no guild id found in queue")}
-        } else {println!("no guild id found in handler")}
+                }
+            } else {
+                println!("no guild id found in queue")
+            }
+        } else {
+            println!("no guild id found in handler")
+        }
     }
 
     Ok(())
@@ -227,7 +267,7 @@ async fn connect_and_register(
                 chan_id: text,
                 http: send_http,
                 //manager,
-                queue: queue.to_owned()
+                queue: queue.to_owned(),
             },
         );
 
@@ -313,11 +353,10 @@ async fn join(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[checks(whitelisted_guilds)]
 async fn skip(ctx: &Context, msg: &Message, _args: Args) -> CommandResult {
-
-        // get our queue
-        let data = ctx.data.read().await;
-        let qu = &mut data.get::<VoiceQueue>().unwrap();
-        let q = qu.write().await;
+    // get our queue
+    let data = ctx.data.read().await;
+    let qu = &mut data.get::<VoiceQueue>().unwrap();
+    let q = qu.write().await;
 
     let guild = msg.guild(&ctx.cache).await.unwrap();
     let guild_id = guild.id;
@@ -326,10 +365,7 @@ async fn skip(ctx: &Context, msg: &Message, _args: Args) -> CommandResult {
         let _ = queue.skip();
 
         msg.channel_id
-            .say(
-                &ctx.http,
-                format!("{} song skipped in queue.", queue.len()),
-            )
+            .say(&ctx.http, format!("{} song skipped in queue.", queue.len()))
             .await?;
     } else {
         msg.channel_id

@@ -24,7 +24,7 @@ COPY graphql ./graphql
 COPY sqlx-data.json ./sqlx-data.json
 RUN touch ./src/main.rs && cargo build --release
 
-# Create a minimal docker file with only the resulting binary
+# Create a "minimal" docker file, using buster as we need it for voice
 FROM debian:buster-slim
 ARG project_name
 RUN apt-get update \
