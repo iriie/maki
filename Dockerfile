@@ -4,7 +4,7 @@ ARG project_name=maki
 # Fill in name of crate^ here
 
 # Set up rust build environment
-FROM clux/muslrust:stable AS build
+FROM rust:latest as builder
 ARG project_name
 
 # Create layer for the dependencies, so we don't have to rebuild them later
@@ -12,20 +12,21 @@ WORKDIR /usr/src
 RUN USER=root cargo new $project_name
 WORKDIR /usr/src/$project_name
 COPY Cargo.toml Cargo.lock ./
-RUN cargo build --release --target x86_64-unknown-linux-musl
+RUN cargo build --release
+RUN rm src/*.rs
 
 # Build the actual source
 COPY src ./src
 COPY graphql ./graphql
 COPY sqlx-data.json ./sqlx-data.json
-RUN touch ./src/main.rs && cargo build --release --target x86_64-unknown-linux-musl
-RUN ls target/release
-RUN find "$(pwd)"
+RUN touch ./src/main.rs && cargo build --release
 
 # Create a minimal docker file with only the resulting binary
-FROM alpine:latest
+FROM debian:buster-slim
 ARG project_name
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=build /usr/src/$project_name/target/x86_64-unknown-linux-musl/release/$project_name ./app
+RUN apt-get update \
+    && apt-get install -y ca-certificates libopus-dev ffmpeg youtube-dl \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /usr/src/$project_name/target/release/$project_name ./app
 USER 1000
 CMD ["./app"]

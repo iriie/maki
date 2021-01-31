@@ -1,0 +1,9 @@
+services:
+  maki:
+    image: iriie/maki:latest
+    env_file:
+      - .env
+    container_name: maki
+    tty: true
+    stdin_open: true
+    restart: always

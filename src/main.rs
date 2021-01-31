@@ -133,7 +133,7 @@ struct Settings;
 #[lacking_role = "Hide"]
 #[max_levenshtein_distance(2)]
 #[strikethrough_commands_tip_in_dm = "you cannot run ~~strikethroughed commands~~."]
-#[strikethrough_commands_tip_in_guild = ""]
+#[strikethrough_commands_tip_in_guild = "you cannot run ~~strikethroughed commands~~."]
 async fn my_help(
     ctx: &Context,
     msg: &Message,
