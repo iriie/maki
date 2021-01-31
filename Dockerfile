@@ -7,6 +7,9 @@ ARG project_name=maki
 FROM rust:latest as builder
 ARG project_name
 
+# install lib/s needed by Songbird
+RUN apt-get update && apt-get install -y libopus-dev
+
 # Create layer for the dependencies, so we don't have to rebuild them later
 WORKDIR /usr/src
 RUN USER=root cargo new $project_name
