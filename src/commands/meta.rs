@@ -97,7 +97,7 @@ async fn activity_reset(ctx: &Context, msg: &Message) -> CommandResult {
     ctx.reset_presence().await;
 
     msg.channel_id
-        .say(&ctx.http, "Reset presence successully!")
+        .say(&ctx.http, "Reset presence successfully!")
         .await?;
 
     Ok(())
