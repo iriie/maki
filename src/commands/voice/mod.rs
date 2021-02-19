@@ -42,7 +42,8 @@ impl VoiceEventHandler for TrackEndNotifier {
             let q_guild = q.get(&self.guild_id).unwrap();
 
             dbg!(q_guild.current()?.metadata());
-            let m = q_guild.current()?.metadata();
+            let cguild = q_guild.current()?;
+            let m = cguild.metadata();
             let message = match q_guild.len() {
                 0 => "No songs left in queue.".to_string(),
                 _ => match (&m.title, &m.artist) {

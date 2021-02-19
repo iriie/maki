@@ -298,7 +298,7 @@ pub async fn dynamic_prefix(ctx: &Context, msg: &Message) -> Option<String> {
     Some(p)
 }
 
-#[tokio::main(core_threads = 8)]
+#[tokio::main]
 async fn main() {
     dotenv().ok();
     pretty_env_logger::init();
@@ -329,6 +329,7 @@ async fn main() {
             c.with_whitespace(true)
                 .on_mention(Some(bot_id))
                 .dynamic_prefix(dynamic_prefix)
+                .prefix("bahahaha")
                 // You can set multiple delimiters via delimiters()
                 // or just one via delimiter(",")
                 // If you set multiple delimiters, the order you list them
@@ -404,7 +405,7 @@ async fn main() {
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
         let pool = get_pool().await.unwrap();
         data.insert::<ConnectionPool>(pool.clone());
-        data.insert::<VoiceQueue>(Arc::new(RwLock::new(HashMap::default())));
+        data.insert::<VoiceQueue>(Arc::new(tokio::sync::RwLock::new(HashMap::default())));
     }
 
     if let Err(why) = client.start_autosharded().await {

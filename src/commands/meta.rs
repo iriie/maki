@@ -218,7 +218,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
     // get current cpu
     let cpu_1 = process.cpu_usage().await.unwrap();
 
-    time::delay_for(time::Duration::from_millis(100)).await;
+    time::sleep(time::Duration::from_millis(100)).await;
 
     let cpu_2 = process.cpu_usage().await.unwrap();
 

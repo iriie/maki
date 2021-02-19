@@ -128,7 +128,7 @@ impl TrackQueue {
     ) {
         let meta = source.metadata.clone();
         let (audio, _) = tracks::create_player(source);
-        self.add(audio, meta, handler);
+        self.add(audio, *meta, handler);
     }
 
     /// Adds a [`Track`] object to the queue, to be played in the channel managed by `handler`.
