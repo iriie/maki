@@ -28,8 +28,9 @@ RUN touch ./src/main.rs && cargo build --release
 FROM debian:buster-slim
 ARG project_name
 RUN apt-get update \
-    && apt-get install -y ca-certificates libopus-dev ffmpeg youtube-dl \
+    && apt-get install -y ca-certificates libopus-dev ffmpeg sudo python3-pip \
     && rm -rf /var/lib/apt/lists/*
+RUN pip3 install youtube_dl
 COPY --from=builder /usr/src/$project_name/target/release/$project_name ./app
 USER 1000
 CMD ["./app"]
