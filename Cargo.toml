@@ -29,6 +29,7 @@ parking_lot = "0.11.1"
 [dependencies.sqlx]
 git = "https://github.com/launchbadge/sqlx"
 default-features = false
+branch = "master"
 features = [ "runtime-tokio-rustls", "macros", "postgres", "sqlite", "chrono", "json" ]
 
 [dependencies.tokio]

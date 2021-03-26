@@ -2889,7 +2889,7 @@ dependencies = [
 [[package]]
 name = "sqlx"
 version = "0.5.1"
-source = "git+https://github.com/launchbadge/sqlx#1a9e0d9a52bc65ae365807f503cc160aaec426d7"
+source = "git+https://github.com/launchbadge/sqlx?branch=master#1a9e0d9a52bc65ae365807f503cc160aaec426d7"
 dependencies = [
  "sqlx-core",
  "sqlx-macros",
@@ -2898,7 +2898,7 @@ dependencies = [
 [[package]]
 name = "sqlx-core"
 version = "0.5.1"
-source = "git+https://github.com/launchbadge/sqlx#1a9e0d9a52bc65ae365807f503cc160aaec426d7"
+source = "git+https://github.com/launchbadge/sqlx?branch=master#1a9e0d9a52bc65ae365807f503cc160aaec426d7"
 dependencies = [
  "ahash 0.6.3",
  "atoi",
@@ -2947,7 +2947,7 @@ dependencies = [
 [[package]]
 name = "sqlx-macros"
 version = "0.5.1"
-source = "git+https://github.com/launchbadge/sqlx#1a9e0d9a52bc65ae365807f503cc160aaec426d7"
+source = "git+https://github.com/launchbadge/sqlx?branch=master#1a9e0d9a52bc65ae365807f503cc160aaec426d7"
 dependencies = [
  "dotenv",
  "either",
@@ -2965,7 +2965,7 @@ dependencies = [
 [[package]]
 name = "sqlx-rt"
 version = "0.3.0"
-source = "git+https://github.com/launchbadge/sqlx#1a9e0d9a52bc65ae365807f503cc160aaec426d7"
+source = "git+https://github.com/launchbadge/sqlx?branch=master#1a9e0d9a52bc65ae365807f503cc160aaec426d7"
 dependencies = [
  "once_cell",
  "tokio 1.2.0",
