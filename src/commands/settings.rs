@@ -321,12 +321,15 @@ async fn server_prefix(ctx: &Context, msg: &Message, args: Args) -> CommandResul
                 )
                 .fetch_all(pool)
                 .await?;
-                let _ = msg
-                    .channel_id
-                    .say(&ctx.http, format!("{:?}", create_prefix))
-                    .await;
+                let _ = msg.channel_id.say(&ctx.http, format!("The prefix for this server(id: {:?}) is now `{}`",create_prefix[0].id, match &create_prefix[0].prefix{
+                    Some(v) => v.to_owned(),
+                    None => "No prefix".to_string(),
+                })).await;
             } else {
-                let _ = msg.channel_id.say(&ctx.http, format!("{:?}", prefix)).await;
+                let _ = msg.channel_id.say(&ctx.http, format!("The prefix for this server(id: {:?}) is now `{}`",prefix[0].id, match &prefix[0].prefix{
+                    Some(v) => v.to_owned(),
+                    None => "No prefix".to_string(),
+                })).await;
             }
         }
     } else {
