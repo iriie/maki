@@ -25,7 +25,7 @@ pub struct TrackEndNotifier {
 #[check]
 #[name = "whitelisted_guilds"]
 async fn music_check(_: &Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> Result<(), Reason> {
-    let allowed_guilds = [&228625269101953035, &290284538733658112, &781421814601089055, &418093857394262020, &381880193251409931];
+    let allowed_guilds = [&228625269101953035, &290284538733658112, &781421814601089055, &418093857394262020, &381880193251409931, &828548609322254357];
     if !allowed_guilds.contains(&msg.guild_id.unwrap_or(GuildId(1)).as_u64()) {
         return Err(Reason::Log("Not in whitelisted guild".to_string()));
     }
@@ -138,7 +138,8 @@ impl VoiceEventHandler for Receiver {
             Ctx::RtcpPacket(data) => {
                 // An event which fires for every received rtcp packet,
                 // containing the call statistics and reporting information.
-                println!("RTCP packet received: {:?}", data.packet);
+                //println!("RTCP packet received: {:?}", data.packet);
+                ();
             },
             Ctx::ClientConnect(ClientConnect {
                 audio_ssrc,
