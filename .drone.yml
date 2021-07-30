@@ -1,0 +1,31 @@
+type: docker
+
+kind: pipeline
+name: default
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+  - name: test-dockerfile
+    image: plugins/docker
+    settings:
+      repo: iriie/maki
+      dry_run: true
+    when:
+      event: [pull_request]
+
+  - name: build-and-push-to-dockerhub
+    image: plugins/docker
+    settings:
+      repo: iriie/maki
+      auto_tag: true
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+    when:
+      ref:
+        - refs/tags/*
+        - refs/heads/master
