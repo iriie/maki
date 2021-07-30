@@ -1,4 +1,5 @@
 pub mod play;
+pub mod sources;
 
 use std::{collections::{HashMap, hash_map::RandomState}, sync::Arc};
 
@@ -25,9 +26,9 @@ pub struct TrackEndNotifier {
 #[check]
 #[name = "whitelisted_guilds"]
 async fn music_check(_: &Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> Result<(), Reason> {
-    let allowed_guilds = [&228625269101953035, &290284538733658112, &781421814601089055, &418093857394262020, &381880193251409931, &828548609322254357];
+    let allowed_guilds = [&228625269101953035, &290284538733658112, &781421814601089055, &418093857394262020, &381880193251409931, &828548609322254357, &720025586034147338, &749034687392907344];
     if !allowed_guilds.contains(&msg.guild_id.unwrap_or(GuildId(1)).as_u64()) {
-        return Err(Reason::Log("Not in whitelisted guild".to_string()));
+        return Err(Reason::Log("Guild is not in allowlist".to_string()));
     }
 
     Ok(())
@@ -44,6 +45,7 @@ impl VoiceEventHandler for TrackEndNotifier {
             dbg!(q_guild.current()?.metadata());
             let cguild = q_guild.current()?;
             let m = cguild.metadata();
+            //dbg!(q_guild.len());
             let message = match q_guild.len() {
                 0 => "No songs left in queue.".to_string(),
                 _ => match (&m.title, &m.artist) {
