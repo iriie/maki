@@ -225,7 +225,7 @@ async fn prefix_only(ctx: &Context, msg: &Message) {
 }
 
 #[hook]
-async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError) -> () {
+async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError, _cmd_name: &str) -> () {
     //for ratelimiting and other things
     match error {
         DispatchError::Ratelimited(seconds) => {
