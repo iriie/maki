@@ -26,10 +26,37 @@ async fn get_source<P: AsRef<OsStr>>(
 ) -> Result<songbird::input::Input, String> {
     dbg!(path_string.split("/").collect::<Vec<&str>>()[2]);
     let source = match path_string.split("/").collect::<Vec<&str>>()[2] {
+        "audius.co" => {
+            let testpath_dash = path_string.clone().split("-").collect::<Vec<_>>();
+            let id = testpath_dash[testpath_dash.len() - 1];
+
+            let testpath_slash = path_string.clone().split("/").collect::<Vec<_>>();
+            let slug = testpath_slash[testpath_slash.len() - 1]
+                .replace(&("-".to_owned() + &id.to_string()), "");
+            let artist = testpath_slash[testpath_slash.len() - 2];
+
+            let url = format!(
+                "https://creatornode--linustek.repl.co/api/generate.m3u8?id={}&title={}&handle={}",
+                id, slug, artist
+            );
+            dbg!(&url);
+
+            match songbird::ffmpeg(url).await {
+                Ok(source) => {
+                    //source.metadata.title = Some("hi".to_string());
+                    source
+                }
+                Err(why) => {
+                    println!("Err starting source: {:?}", why);
+
+                    return Err("fuck. a ffmpeg error.".to_string());
+                }
+            }
+        }
         "www.youtube.com" | "youtube.com" | "youtu.be" | "soundcloud.com" => {
             match songbird::ytdl(&path_string).await {
                 Ok(source) => {
-                    info!("youtube track added");
+                    info!("youtube-dl track added");
                     source
                 }
                 Err(why) => {
@@ -124,14 +151,20 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         .expect("Songbird Voice client placed in at initialisation.")
         .clone();
 
+    debug!("Got manager");
+
     // get our queue
     let data = ctx.data.read().await;
     let qu = &mut data.get::<VoiceQueue>().unwrap();
     let mut q = qu.write().await;
 
+    debug!("Got queue");
+
     if let Some(handler_lock) = manager.get(guild_id) {
         if let Some(queue) = q.get(&guild_id) {
             let mut handler = handler_lock.lock().await;
+
+            debug!("Got audio handler");
 
             let source = get_source(&url, &url).await?;
             let metadata = source.metadata.clone();
@@ -308,9 +341,72 @@ async fn queue(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     match args.is_empty() {
         false => play(ctx, msg, args).await?,
         true => {
-            msg.channel_id
-                .say(&ctx.http, "TODO: Queue function")
-                .await?;
+            let manager = songbird::get(ctx)
+                .await
+                .expect("Songbird Voice client placed in at initialisation.")
+                .clone();
+
+            // get our queue
+            let data = ctx.data.read().await;
+            let qu = &mut data.get::<VoiceQueue>().unwrap();
+            let q = qu.write().await;
+
+            let guild = msg.guild(&ctx.cache).await.unwrap();
+            let guild_id = guild.id;
+
+            if let Some(queue) = q.get(&guild_id) {
+                let q = queue.current_queue();
+                dbg!(&q);
+
+                let mut to_send: String = "".to_string();
+                if q.len() < 1 {
+                    msg.channel_id.say(&ctx.http, "Nothing in queue.").await?;
+                    return Ok(());
+                }
+                for (i, track) in q.iter().enumerate() {
+                    let info = track.metadata();
+                    let none_value = "?";
+                    let title = match &info.title {
+                        Some(t) => t,
+                        None => none_value,
+                    };
+                    let artist = match &info.artist {
+                        Some(a) => a,
+                        None => none_value,
+                    };
+                    let time = match &info.duration {
+                        Some(d) => {
+                            let mut time_str: String = "".to_string();
+                            let mut time = d.as_secs();
+                            if d.as_secs() > 3600 {
+                                time_str.push_str(&format!("{}:", time / 3600));
+                                time = time % 3600;
+                            }
+                            if d.as_secs() > 60 {
+                                time_str.push_str(&format!("{}:", time / 60));
+                                time = time % 60;
+                                dbg!(time);
+                            }
+                            time_str.push_str(&format!("{:02}", time));
+                            time_str
+                        }
+                        None => "00".to_string(),
+                    };
+
+                    let url = match &info.source_url {
+                        Some(u) => {
+                            let to_split = u.split("#?").collect::<Vec<_>>();
+                            to_split[to_split.len() - 1]
+                        }
+                        None => &"N?A",
+                    };
+
+                    let to_push = format!("{}. {} - {} [{}]\n{}\n", i, title, artist, time, url);
+
+                    to_send.push_str(&to_push);
+                }
+                msg.channel_id.say(&ctx.http, to_send).await?;
+            }
 
             return Ok(());
         }
@@ -365,7 +461,7 @@ async fn skip(ctx: &Context, msg: &Message, _args: Args) -> CommandResult {
         let _ = queue.skip();
 
         msg.channel_id
-            .say(&ctx.http, format!("{} song skipped in queue.", queue.len()))
+            .say(&ctx.http, format!("1 song skipped in queue, {} left.", queue.len() - 1))
             .await?;
     } else {
         msg.channel_id
