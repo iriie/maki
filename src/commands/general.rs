@@ -400,7 +400,7 @@ async fn say(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         .clean_everyone(true)
         .clean_here(true);
     //.display_as_member_from(g);
-    let to_say = content_safe(&ctx.cache, &original, &opts).await;
+    let to_say = content_safe(&ctx.cache, &original, &opts);
     msg.channel_id.say(&ctx.http, format!("{}", to_say)).await?;
     Ok(())
 }
