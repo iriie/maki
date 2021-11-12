@@ -217,9 +217,14 @@ async fn prefix_only(ctx: &Context, msg: &Message) {
         || msg.content == "<@683934524526034994>".to_string()
     {
         let prefix = dynamic_prefix(ctx, msg).await.unwrap_or(prefix);
+        const is_prod: String =
+            match &env::var("PRODUCTION").expect("Expected a prefix in the environment.") = true {
+                true => "",
+                false => " beta",
+            };
         let _ = msg
             .channel_id
-            .say(&ctx.http, &format!("The prefix is `{}`", prefix))
+            .say(&ctx.http, &format!("The{} prefix is `{}`", is_prod, prefix))
             .await;
     }
 }
@@ -327,7 +332,7 @@ async fn main() {
     let framework = StandardFramework::new()
         .configure(|c| {
             c.with_whitespace(true)
-                .on_mention(Some(bot_id))
+                .on_mention(Some(UserId(bot_id.as_u64().to_owned())))
                 .dynamic_prefix(dynamic_prefix)
                 .prefix("bahahaha")
                 // You can set multiple delimiters via delimiters()
