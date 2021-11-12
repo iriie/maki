@@ -217,7 +217,7 @@ async fn prefix_only(ctx: &Context, msg: &Message) {
         || msg.content == "<@683934524526034994>".to_string()
     {
         let prefix = dynamic_prefix(ctx, msg).await.unwrap_or(prefix);
-        const is_prod: String =
+        const is_prod: &str =
             match &env::var("PRODUCTION").expect("Expected a prefix in the environment.") = true {
                 true => "",
                 false => " beta",
