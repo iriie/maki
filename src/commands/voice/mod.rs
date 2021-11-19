@@ -48,8 +48,9 @@ impl VoiceEventHandler for TrackEndNotifier {
             //dbg!(q_guild.len());
             let message = match q_guild.len() {
                 0 => "No songs left in queue.".to_string(),
-                _ => match (&m.title, &m.artist) {
-                    (Some(t), Some(a)) => format!("Now playing: `{}` by `{}`", t, a),
+                _ => match (&m.title, &m.track, &m.artist) {
+                    (None, Some(t), Some(a)) => format!("Now playing: `{}` by `{}`", t, a),
+                    (Some(t), _, Some(a)) => format!("Now playing: `{}` by `{}`", t, a),
                     _ => "Now playing another song. (no metadata)".to_string()
                 },
             };

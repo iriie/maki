@@ -90,7 +90,7 @@ async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
     let qu = data.get::<VoiceQueue>().unwrap();
     let q = qu.write().await;
 
-    let guild = msg.guild(&ctx.cache).await.unwrap();
+    let guild = msg.guild(&ctx.cache).unwrap();
     let guild_id = guild.id;
 
     let manager = songbird::get(ctx)
@@ -112,9 +112,9 @@ async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
                 .await?;
         }
 
-        msg.channel_id.say(&ctx.http, "Left voice channel").await?;
+        msg.channel_id.say(&ctx.http, "👋 Bye! See you again soon!").await?;
     } else {
-        msg.reply(ctx, "Not in a voice channel").await?;
+        msg.reply(ctx, "Where do you want me to leave? You should be in a voice channel to execute this command.").await?;
     }
 
     Ok(())
@@ -128,7 +128,7 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         Ok(url) => url,
         Err(_) => {
             msg.channel_id
-                .say(&ctx.http, "Must provide a URL to a video or audio")
+                .say(&ctx.http, "You need to provide a URL to a video or audio")
                 .await?;
 
             return Ok(());
@@ -137,13 +137,13 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     if !url.starts_with("http") {
         msg.channel_id
-            .say(&ctx.http, "Must provide a valid URL")
+            .say(&ctx.http, "You need to provide a valid URL")
             .await?;
 
         return Ok(());
     }
 
-    let guild = msg.guild(&ctx.cache).await.unwrap();
+    let guild = msg.guild(&ctx.cache).unwrap();
     let guild_id = guild.id;
 
     let manager = songbird::get(ctx)
@@ -174,25 +174,46 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
             match queue.len() {
                 1 => {
+                    let none_value = "Unknown".to_string();
+                    let title = match metadata.title {
+                        Some(t) => t,
+                        None => match metadata.track {
+                            Some(t) => t,
+                            None => none_value,
+                        },
+                    };
                     msg.channel_id
                         .say(
                             &ctx.http,
                             format!(
                                 "Now playing: `{}` by `{}`",
-                                metadata.title.unwrap_or("Unknown".to_string()),
+                                title,
                                 metadata.artist.unwrap_or("unknown".to_string())
                             ),
                         )
                         .await?;
                 }
                 _ => {
+                    let none_value = "song".to_string();
+                    let title = match metadata.title {
+                        Some(t) => t,
+                        None => match metadata.track {
+                            Some(t) => t,
+                            None => none_value,
+                        },
+                    };
+                    let vari = match queue.len() - 1 {
+                        1 => "It's up next.".to_string(),
+                        2 => "It'll play after the next track.".to_string(),
+                        _ => format!("It'll play after the next {} tracks.",  queue.len() - 2),
+                    };
                     msg.channel_id
                         .say(
                             &ctx.http,
                             format!(
-                                "Added `{}` to queue at position {}",
-                                metadata.title.unwrap_or("song".to_string()),
-                                queue.len() - 1
+                                "Added `{}` to queue. {}",
+                                title,
+                                vari
                             ),
                         )
                         .await?;
@@ -208,7 +229,7 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         let connect_to = match channel_id {
             Some(channel) => channel,
             None => {
-                msg.reply(ctx, "Not in a voice channel").await?;
+                msg.reply(ctx, "Where do you want me to join? You need to be in a voice channel for this.").await?;
 
                 return Ok(());
             }
@@ -239,6 +260,15 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
                 dbg!(queue);
 
+                let none_value = "Unknown".to_string();
+                let title = match metadata.title {
+                    Some(t) => t,
+                    None => match metadata.track {
+                        Some(t) => t,
+                        None => none_value,
+                    },
+                };
+
                 match queue.len() {
                     1 => {
                         msg.channel_id
@@ -246,7 +276,7 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                                 &ctx.http,
                                 format!(
                                     "Now playing: `{}` by `{}`",
-                                    metadata.title.unwrap_or("Unknown".to_string()),
+                                    title,
                                     metadata.artist.unwrap_or("unknown".to_string())
                                 ),
                             )
@@ -258,7 +288,7 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
                                 &ctx.http,
                                 format!(
                                     "Added `{}` to queue at position {}",
-                                    metadata.title.unwrap_or("song".to_string()),
+                                    title,
                                     queue.len() - 1
                                 ),
                             )
@@ -328,7 +358,7 @@ async fn connect_and_register(
             .await?;
     } else {
         msg.channel_id
-            .say(&ctx.http, "Error joining the channel")
+            .say(&ctx.http, "I couldn't join the channel. Make sure (or get someone to make sure) that I have permissions to join and speak.")
             .await?;
     };
     Ok(())
@@ -351,7 +381,7 @@ async fn queue(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             let qu = &mut data.get::<VoiceQueue>().unwrap();
             let q = qu.write().await;
 
-            let guild = msg.guild(&ctx.cache).await.unwrap();
+            let guild = msg.guild(&ctx.cache).unwrap();
             let guild_id = guild.id;
 
             if let Some(queue) = q.get(&guild_id) {
@@ -360,7 +390,7 @@ async fn queue(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
                 let mut to_send: String = "".to_string();
                 if q.len() < 1 {
-                    msg.channel_id.say(&ctx.http, "Nothing in queue.").await?;
+                    msg.channel_id.say(&ctx.http, "There isn't anything in the queue.").await?;
                     return Ok(());
                 }
                 for (i, track) in q.iter().enumerate() {
@@ -368,7 +398,10 @@ async fn queue(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                     let none_value = "?";
                     let title = match &info.title {
                         Some(t) => t,
-                        None => none_value,
+                        None => match &info.track {
+                            Some(t) => t,
+                            None => none_value,
+                        },
                     };
                     let artist = match &info.artist {
                         Some(a) => a,
@@ -390,18 +423,23 @@ async fn queue(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                             time_str.push_str(&format!("{:02}", time));
                             time_str
                         }
-                        None => "00".to_string(),
+                        None => "?".to_string(),
                     };
 
                     let url = match &info.source_url {
                         Some(u) => {
                             let to_split = u.split("#?").collect::<Vec<_>>();
-                            to_split[to_split.len() - 1]
+                            to_split[to_split.len() - 1].to_owned() + "\n"
                         }
-                        None => &"N?A",
+                        None => "".to_string(),
+                    };
+                    let index = match i {
+                        0 => "Now Playing".to_string(),
+                        _ => i.to_string()
                     };
 
-                    let to_push = format!("{}. {} - {} [{}]\n{}\n", i, title, artist, time, url);
+
+                    let to_push = format!("{}: {} - {} [{}]\n{}", index, title, artist, time, url);
 
                     to_send.push_str(&to_push);
                 }
@@ -418,7 +456,7 @@ async fn queue(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 async fn join(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(&ctx.cache).await.unwrap();
+    let guild = msg.guild(&ctx.cache).unwrap();
     let guild_id = guild.id;
 
     let channel_id = guild
@@ -429,7 +467,7 @@ async fn join(ctx: &Context, msg: &Message) -> CommandResult {
     let connect_to = match channel_id {
         Some(channel) => channel,
         None => {
-            msg.reply(ctx, "Not in a voice channel").await?;
+            msg.reply(ctx, "You need to be in a voice channel.").await?;
 
             return Ok(());
         }
@@ -454,18 +492,21 @@ async fn skip(ctx: &Context, msg: &Message, _args: Args) -> CommandResult {
     let qu = &mut data.get::<VoiceQueue>().unwrap();
     let q = qu.write().await;
 
-    let guild = msg.guild(&ctx.cache).await.unwrap();
+    let guild = msg.guild(&ctx.cache).unwrap();
     let guild_id = guild.id;
 
     if let Some(queue) = q.get(&guild_id) {
         let _ = queue.skip();
 
         msg.channel_id
-            .say(&ctx.http, format!("1 song skipped in queue, {} left.", queue.len() - 1))
+            .say(
+                &ctx.http,
+                format!("1 song skipped in queue, {} left.", queue.len() - 1),
+            )
             .await?;
     } else {
         msg.channel_id
-            .say(&ctx.http, "Not in a voice channel to play in")
+            .say(&ctx.http, "You need to be in a voice channel for this.")
             .await?;
     }
 
