@@ -217,14 +217,15 @@ async fn prefix_only(ctx: &Context, msg: &Message) {
         || msg.content == "<@683934524526034994>".to_string()
     {
         let prefix = dynamic_prefix(ctx, msg).await.unwrap_or(prefix);
-        const is_prod: &str =
-            match &env::var("PRODUCTION").expect("Expected a prefix in the environment.").to_lower() == "true" {
+        let is_prod: &str = &env::var("PRODUCTION").expect("Expected a prefix in the environment.").to_lowercase();
+        let is_prod_message: &str =
+            match is_prod == "true" {
                 true => "",
                 false => " beta",
             };
         let _ = msg
             .channel_id
-            .say(&ctx.http, &format!("The{} prefix is `{}`", is_prod, prefix))
+            .say(&ctx.http, &format!("The{} prefix is `{}`", is_prod_message, prefix))
             .await;
     }
 }
