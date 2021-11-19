@@ -414,6 +414,15 @@ async fn main() {
         data.insert::<VoiceQueue>(Arc::new(tokio::sync::RwLock::new(HashMap::default())));
     }
 
+    // clone for use inside process
+    let shard_manager = client.shard_manager.clone();
+
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c().await.unwrap();
+        warn!("Shutting down all shards.");
+        shard_manager.lock().await.shutdown_all().await;
+    });
+
     if let Err(why) = client.start_autosharded().await {
         error!("Client error: {:?}", why);
     }
