@@ -107,7 +107,7 @@ async fn activity_reset(ctx: &Context, msg: &Message) -> CommandResult {
 #[description("Invite the bot to a server.")]
 async fn invite(ctx: &Context, msg: &Message) -> CommandResult {
     // Create invite URL using the bot's user ID.
-    let url = format!("Invite URL: <https://discordapp.com/oauth2/authorize?&client_id={:?}&scope=bot&permissions=0>", ctx.cache.current_user_id().await);
+    let url = format!("Invite URL: <https://discordapp.com/oauth2/authorize?&client_id={:?}&scope=bot&permissions=0>", ctx.cache.current_user_id());
 
     msg.channel_id.say(&ctx.http, url).await?;
 
@@ -235,7 +235,7 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
         git_commit.push('#');
         git_commit.push_str(std::str::from_utf8(&git_stdout.stdout).unwrap());
     } else {
-        git_commit.push_str("prod")
+        git_commit.push_str("")
     }
     git_commit.truncate(7);
 
@@ -247,10 +247,10 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
 
     let owner_tag = name.to_string() + "#" + &discriminator.to_string();
 
-    let guilds_count = &ctx.cache.guilds().await.len();
-    let channels_count = &ctx.cache.guild_channel_count().await;
-    let users_count = ctx.cache.user_count().await;
-    let users_count_unknown = ctx.cache.unknown_members().await as usize;
+    let guilds_count = &ctx.cache.guilds().len();
+    let channels_count = &ctx.cache.guild_channel_count();
+    let users_count = ctx.cache.user_count();
+    let users_count_unknown = ctx.cache.unknown_members() as usize;
 
     let uptime = {
         let data = ctx.data.read().await;
@@ -275,9 +275,9 @@ async fn stats(ctx: &Context, msg: &Message) -> CommandResult {
     f.num_items(4);
     f.ago("");
 
-    let shard_plural = if ctx.cache.shard_count().await > 1 { "s" } else { "" };
-    let avatar = ctx.cache.current_user().await.avatar_url().unwrap_or("https://cdn.discordapp.com/embed/avatars/0.png".to_string());
-    let shards = ctx.cache.shard_count().await;
+    let shard_plural = if ctx.cache.shard_count() > 1 { "s" } else { "" };
+    let avatar = ctx.cache.current_user().avatar_url().unwrap_or("https://cdn.discordapp.com/embed/avatars/0.png".to_string());
+    let shards = ctx.cache.shard_count();
 
     let _ = msg
         .channel_id

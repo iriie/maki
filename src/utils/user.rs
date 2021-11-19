@@ -83,7 +83,7 @@ pub async fn get_members(ctx: &Context, msg: &Message, member: String) -> Result
             Err(why) => Err(why.to_string()),
         }
     } else {
-        let guild = &msg.guild(ctx).await.unwrap();
+        let guild = &msg.guild(ctx).unwrap();
         let member = member.split('#').next().unwrap();
 
         for m in guild.members.values() {
