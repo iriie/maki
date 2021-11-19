@@ -218,7 +218,7 @@ async fn prefix_only(ctx: &Context, msg: &Message) {
     {
         let prefix = dynamic_prefix(ctx, msg).await.unwrap_or(prefix);
         const is_prod: &str =
-            match &env::var("PRODUCTION").expect("Expected a prefix in the environment.") = true {
+            match &env::var("PRODUCTION").expect("Expected a prefix in the environment.").to_lower() == "true" {
                 true => "",
                 false => " beta",
             };
