@@ -8,14 +8,13 @@ use songbird::SerenityInit;
 
 use serenity::{
     async_trait,
-    client::bridge::gateway::GatewayIntents,
     framework::standard::{
         help_commands,
         macros::{group, help, hook},
         Args, CommandGroup, CommandResult, DispatchError, HelpOptions, StandardFramework,
     },
     http::Http,
-    model::{channel::Message, event::ResumedEvent, gateway::Ready, id::UserId, prelude::GuildId},
+    model::{channel::Message, event::ResumedEvent, gateway::Ready, id::UserId, prelude::GuildId, prelude::GatewayIntents},
 };
 use std::{
     collections::{HashMap, HashSet},

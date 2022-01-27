@@ -26,7 +26,7 @@ pub struct TrackEndNotifier {
 #[check]
 #[name = "whitelisted_guilds"]
 async fn music_check(_: &Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> Result<(), Reason> {
-    let allowed_guilds = [&228625269101953035, &290284538733658112, &781421814601089055, &418093857394262020, &381880193251409931, &828548609322254357, &720025586034147338, &749034687392907344];
+    let allowed_guilds = [&228625269101953035, &290284538733658112, &781421814601089055, &418093857394262020, &381880193251409931, &828548609322254357, &720025586034147338, &749034687392907344, &553948136629075968];
     if !allowed_guilds.contains(&msg.guild_id.unwrap_or(GuildId(1)).as_u64()) {
         return Err(Reason::Log("Guild is not in allowlist".to_string()));
     }
